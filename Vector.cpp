@@ -41,7 +41,7 @@ Vector3 Vector3::operator+(const Vector3& rhs) const
 
 float Vector3::dot(const Vector3& rhs) const
 {
-	return data[0] * rhs.data[0] + data[1] * rhs.data[1] +  data[2] * rhs.data[2];
+	return data[0] * rhs.data[0] + data[1] * rhs.data[1] + data[2] * rhs.data[2];
 }
 
 Vector3 Vector3::cross(const Vector3& rhs) const
@@ -57,7 +57,12 @@ void Vector3::normalize()
 	data[2] /= length;
 }
 
-std::string Vector3::to_string() {
+float& Vector3::operator[](int rhs)
+{
+	return data[rhs];
+}
+
+std::string Vector3::to_string() const {
 	return "[" + std::to_string(data[0]) + ", " + std::to_string(data[1]) + ", " + std::to_string(data[2]) + "]";
 }
 

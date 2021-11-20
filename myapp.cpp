@@ -1,6 +1,7 @@
 #include "precomp.h"
 #include "myapp.h"
 #include "Vector.h"
+#include "Ray.h"
 
 TheApp* CreateApp() { return new MyApp(); }
 
@@ -10,6 +11,16 @@ TheApp* CreateApp() { return new MyApp(); }
 void MyApp::Init()
 {
 	// anything that happens only once at application start goes here
+	Vector3 camera_pos = Vector3(0, 0, 0);
+	Vector3 camera_dir = Vector3(0, 0, 1);
+	generate_primary_rays(camera_pos, camera_dir, 60, 100, 100);
+	generate_primary_rays(camera_pos, camera_dir, 120, 1920, 1080);
+	generate_primary_rays(camera_pos, camera_dir, 60, 1920, 1080);
+	generate_primary_rays(camera_pos, camera_dir, 30, 1920, 1080);
+	camera_pos = Vector3(1, 1, 0);
+	camera_dir = Vector3(0, 1, 1);
+	camera_dir.normalize();
+	generate_primary_rays(camera_pos, camera_dir, 60, 1920, 1080);
 }
 
 // -----------------------------------------------------------
@@ -18,7 +29,7 @@ void MyApp::Init()
 void MyApp::Tick( float deltaTime )
 {
 	total_time += deltaTime/1000;
-	printf("time: %f\n", total_time);
+	//printf("time: %f\n", total_time);
 	// clear the screen to black
 	screen->Clear( 0 );
 	// print something to the console window

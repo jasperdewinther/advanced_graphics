@@ -15,8 +15,9 @@ public:
 	Vector3 cross(const Vector3& rhs) const;
 	bool operator==(const Vector3& rhs) const;
 	bool operator!=(const Vector3& rhs) const;
+	float& operator[](int rhs);
 	void normalize();
-	std::string to_string();
+	std::string to_string() const;
 };
 
 Vector3 operator*(const float lhs, const Vector3& rhs);

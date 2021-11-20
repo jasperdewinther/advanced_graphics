@@ -16,7 +16,10 @@ void Sphere::intersects(Ray& ray)
 	float p2 = Q.dot(Q);
 	if (p2 > radius2) return;
 	t -= sqrt(radius2 - p2);
-	if ((t < ray.t) && (t > 0)) ray.t = t;
+	if ((t < ray.t) && (t > 0)) {
+		ray.t = t;
+		ray.hitptr = this;
+	}
 }
 
 void Sphere::set_r(float new_radius)

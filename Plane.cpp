@@ -9,5 +9,6 @@ void Plane::intersects(Ray& ray)
 	}
 	if (t >= 0) {
 		ray.t = t;
+		ray.hitptr = this;
 	}
 }
