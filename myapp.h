@@ -5,6 +5,8 @@ namespace Tmpl8
 
 class MyApp : public TheApp
 {
+private:
+	float total_time = 0;
 public:
 	// game flow methods
 	void Init();

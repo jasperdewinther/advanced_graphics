@@ -1,5 +1,6 @@
 #include "precomp.h"
 #include "myapp.h"
+#include "Vector.h"
 
 TheApp* CreateApp() { return new MyApp(); }
 
@@ -16,10 +17,12 @@ void MyApp::Init()
 // -----------------------------------------------------------
 void MyApp::Tick( float deltaTime )
 {
+	total_time += deltaTime/1000;
+	printf("time: %f\n", total_time);
 	// clear the screen to black
 	screen->Clear( 0 );
 	// print something to the console window
-	printf( "hello world!\n" );
+	//printf( "hello world!\n" );
 	// plot some colors
 	for( int red = 0; red < 256; red++ ) for( int green = 0; green < 256; green++ )
 	{
