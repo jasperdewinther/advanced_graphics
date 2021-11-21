@@ -11,16 +11,6 @@ TheApp* CreateApp() { return new MyApp(); }
 void MyApp::Init()
 {
 	// anything that happens only once at application start goes here
-	Vector3 camera_pos = Vector3(0, 0, 0);
-	Vector3 camera_dir = Vector3(0, 0, 1);
-	generate_primary_rays(camera_pos, camera_dir, 60, 100, 100);
-	generate_primary_rays(camera_pos, camera_dir, 120, 1920, 1080);
-	generate_primary_rays(camera_pos, camera_dir, 60, 1920, 1080);
-	generate_primary_rays(camera_pos, camera_dir, 30, 1920, 1080);
-	camera_pos = Vector3(1, 1, 0);
-	camera_dir = Vector3(0, 1, 1);
-	camera_dir.normalize();
-	generate_primary_rays(camera_pos, camera_dir, 60, 1920, 1080);
 }
 
 // -----------------------------------------------------------
@@ -29,16 +19,23 @@ void MyApp::Init()
 void MyApp::Tick( float deltaTime )
 {
 	total_time += deltaTime/1000;
-	//printf("time: %f\n", total_time);
+	Vector3 camera_pos = Vector3(0, 0, 0);
+	Vector3 camera_dir = Vector3(sin(total_time / 10), 0, cos(total_time / 10));
+	std::vector<Ray> rays = generate_primary_rays(camera_pos, camera_dir, 90, screen->width, screen->height);
+	printf("time: %f\n", deltaTime);
 	// clear the screen to black
 	screen->Clear( 0 );
 	// print something to the console window
 	//printf( "hello world!\n" );
 	// plot some colors
-	for( int red = 0; red < 256; red++ ) for( int green = 0; green < 256; green++ )
+
+	for( int x = 0; x < screen->width; x++ ) for( int y = 0; y < screen->height; y++ )
 	{
-		int x = red, y = green;
-		screen->Plot( x + 200, y + 100, (red << 16) + (green << 8) );
+		Ray r = rays[x + screen->width * y];
+		uint red = (uint)(r.d.data[0]*255.0f);
+		uint green = (uint)(r.d.data[1]*255.0f);
+		uint blue = (uint)(r.d.data[2]*255.0f);
+		screen->Plot( x, y, (red << 16) + (green << 8) + blue );
 	}
 	// plot a white pixel in the bottom right corner
 	screen->Plot( SCRWIDTH - 2, SCRHEIGHT - 2, 0xffffff );
