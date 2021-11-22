@@ -6,7 +6,6 @@
     </ClCompile>
     <ClCompile Include="MyApp.cpp" />
     <ClCompile Include="Plane.cpp" />
-    <ClCompile Include="Vector.cpp" />
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="Sphere.cpp" />
   </ItemGroup>
@@ -23,7 +22,6 @@
     </ClInclude>
     <ClInclude Include="Plane.h" />
     <ClInclude Include="PrimitiveGeometry.h" />
-    <ClInclude Include="Vector.h" />
     <ClInclude Include="Ray.h" />
     <ClInclude Include="Sphere.h" />
   </ItemGroup>

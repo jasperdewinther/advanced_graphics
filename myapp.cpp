@@ -1,6 +1,5 @@
 #include "precomp.h"
 #include "myapp.h"
-#include "Vector.h"
 #include "Ray.h"
 
 TheApp* CreateApp() { return new MyApp(); }
@@ -19,8 +18,8 @@ void MyApp::Init()
 void MyApp::Tick( float deltaTime )
 {
 	total_time += deltaTime/1000;
-	Vector3 camera_pos = Vector3(0, 0, 0);
-	Vector3 camera_dir = Vector3(sin(total_time / 10), 0, cos(total_time / 10));
+	float3 camera_pos = float3(0, 0, 0);
+	float3 camera_dir = float3(sin(total_time / 10), 0, cos(total_time / 10));
 	std::vector<Ray> rays = generate_primary_rays(camera_pos, camera_dir, 90, screen->width, screen->height);
 	printf("time: %f\n", deltaTime);
 	// clear the screen to black
@@ -32,9 +31,9 @@ void MyApp::Tick( float deltaTime )
 	for( int x = 0; x < screen->width; x++ ) for( int y = 0; y < screen->height; y++ )
 	{
 		Ray r = rays[x + screen->width * y];
-		uint red = (uint)(r.d.data[0]*255.0f);
-		uint green = (uint)(r.d.data[1]*255.0f);
-		uint blue = (uint)(r.d.data[2]*255.0f);
+		uint red = (uint)(r.d.x*255.0f);
+		uint green = (uint)(r.d.y*255.0f);
+		uint blue = (uint)(r.d.z*255.0f);
 		screen->Plot( x, y, (red << 16) + (green << 8) + blue );
 	}
 	// plot a white pixel in the bottom right corner

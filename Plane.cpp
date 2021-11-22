@@ -3,7 +3,7 @@
 
 void Plane::intersects(Ray& ray)
 {
-	float t = -(ray.o.dot(n) + d) / (ray.d.dot(n));
+	float t = -(dot(ray.o, n) + d) / dot(ray.d, n);
 	if (t == NAN) {
 		ray.t = 0;
 	}
