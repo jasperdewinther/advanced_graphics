@@ -10,7 +10,7 @@ public:
 	float3 o; //origin
 	float3 d; //direction
 	float t; //distance to closest intersection
-	PrimitiveGeometry* hitptr; //a pointer to the hit object
+	const PrimitiveGeometry* hitptr; //a pointer to the hit object
 
 	Ray(float3 origin, float3 direction);
 };

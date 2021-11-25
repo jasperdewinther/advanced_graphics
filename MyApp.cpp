@@ -1,7 +1,6 @@
 #include "precomp.h"
 #include "myapp.h"
 #include "Ray.h"
-#include "Utils.h"
 #include <format>
 #include "Sphere.h"
 #include "Plane.h"
@@ -15,9 +14,7 @@ TheApp* CreateApp() { return new MyApp(); }
 void MyApp::Init()
 {
 	// anything that happens only once at application start goes here
-	scene.push_back(new Sphere(float3(0, 1, 0), 1, Material::normal));
-	scene.push_back(new Sphere(float3(3, 0, 0), 1, Material::red));
-	scene.push_back(new Plane(float3(0, 1, 0), 0, Material::checkerboard));
+	s = Scene();
 }
 
 // -----------------------------------------------------------
@@ -28,8 +25,10 @@ void MyApp::Tick( float deltaTime )
 	Timer t = Timer();
 	total_time += deltaTime/1000;
 	float3 camera_pos = float3(sin(total_time / 10)*10, 3, cos(total_time / 10)*10);
-	float3 camera_dir = -camera_pos;
-	camera_dir = normalize(camera_dir);
+	float3 camera_dir = normalize(-camera_pos);
+	float3 sun_direction = normalize(float3(1,1,1)); //TODO implement correctly using primitives
+
+
 	std::vector<Ray> rays = generate_primary_rays(camera_pos, camera_dir, 90 + sin(total_time / 10)*60, screen->width, screen->height);
 	float t_ray_generation = t.elapsed();
 	t.reset();
@@ -41,27 +40,13 @@ void MyApp::Tick( float deltaTime )
 	for( int x = 0; x < screen->width; x++ ) for( int y = 0; y < screen->height; y++ )
 	{
 		Ray r = rays[x + screen->width * y];
-		for (auto& obj : scene) {
-			obj->intersects(r);
-		}
-		if (r.hitptr != nullptr) {
-			float3 hitPos = r.o + r.d * r.t;
-			float3 normal =  r.hitptr->get_normal(hitPos);
-			MaterialData m = materials[r.hitptr->m];
-			float3 color = m.get_color(hitPos, normal);
-			
-			uint red = (uint)(color.x*255.0f);
-			uint green = (uint)(color.y*255.0f);
-			uint blue = (uint)(color.z*255.0f);
-			screen->Plot(x, y, (red << 16) + (green << 8) + blue);
-		}
-		else {
-			uint red = (uint)(fabs(r.d.x) * 255.0f);
-			uint green = (uint)(fabs(r.d.y) * 255.0f);
-			uint blue = (uint)(fabs(r.d.z) * 255.0f);
-			screen->Plot(x, y, (red << 16) + (green << 8) + blue);
-		}
+		float3 color = s.trace_scene(r, float3(1, 1, 1), sun_direction);
 
+		uint red = (uint)(color.x * 255.0f);
+		uint green = (uint)(color.y * 255.0f);
+		uint blue = (uint)(color.z * 255.0f);
+
+		screen->Plot(x, y, (red << 16) + (green << 8) + blue);
 
 	}
 	float t_drawing_pixels = t.elapsed();
@@ -81,8 +66,9 @@ void MyApp::Tick( float deltaTime )
 	printf("bot rigt -- %f %f %f\n", bot_right.x, bot_right.y, bot_right.z);
 }
 
+
+
+
 void MyApp::Shutdown() {
-	for (auto p : scene) {
-		delete p;
-	}
+	s.delete_scene();
 }

@@ -10,7 +10,7 @@ Sphere::Sphere(float3 position, float radius, Material material):
 	m = material;
 }
 
-void Sphere::intersects(Ray& ray)
+void Sphere::intersects(Ray& ray) const
 {
 	float3 C = pos - ray.o;
 	float t = dot(C, ray.d);
@@ -24,11 +24,10 @@ void Sphere::intersects(Ray& ray)
 	}
 }
 
-float3 Sphere::get_normal(float3& intersection_pos)
+float3 Sphere::get_normal(float3& intersection_pos) const
 {
 	float3 n = intersection_pos - pos;
-	normalize(n);
-	return n;
+	return normalize(n);
 }
 
 void Sphere::set_r(float new_radius)

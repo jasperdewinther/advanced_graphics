@@ -42,3 +42,4 @@ std::vector<Ray> generate_primary_rays(const float3& camerapos, const float3& ca
 
 	return rays;
 }
+

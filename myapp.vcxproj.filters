@@ -8,9 +8,9 @@
     <ClCompile Include="Plane.cpp" />
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="Sphere.cpp" />
-    <ClCompile Include="Utils.cpp" />
     <ClCompile Include="Materials.cpp" />
     <ClCompile Include="PrimitiveGeometry.cpp" />
+    <ClCompile Include="Scene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="template\common.h">
@@ -27,8 +27,8 @@
     <ClInclude Include="PrimitiveGeometry.h" />
     <ClInclude Include="Ray.h" />
     <ClInclude Include="Sphere.h" />
-    <ClInclude Include="Utils.h" />
     <ClInclude Include="Materials.h" />
+    <ClInclude Include="Scene.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="template\LICENSE">

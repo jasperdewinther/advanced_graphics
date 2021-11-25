@@ -7,7 +7,7 @@ class Plane : public PrimitiveGeometry
 	float d; //distance from (0,0,0) to plane
 public:
 	Plane(float3 normal, float distance, Material material);
-	void intersects(Ray& ray) override;
-	float3 get_normal(float3& intersection_pos) override;
+	void intersects(Ray& ray) const override;
+	float3 get_normal(float3& intersection_pos) const override;
 };
 

@@ -3,14 +3,14 @@
 
 
 Plane::Plane(float3 normal, float distance, Material material):
-	n(normal),
+	n(normalize(normal)),
 	d(distance)
 {
 	m = material;
 }
 
 
-void Plane::intersects(Ray& ray)
+void Plane::intersects(Ray& ray) const
 {
 	float t = -(dot(ray.o, n) - d) / dot(ray.d, n);
 	if (std::isnan(t)) { //check if nan
@@ -22,7 +22,7 @@ void Plane::intersects(Ray& ray)
 	}
 }
 
-float3 Plane::get_normal(float3& intersection_pos)
+float3 Plane::get_normal(float3& intersection_pos) const
 {
 	return n;
 }
