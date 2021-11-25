@@ -10,6 +10,7 @@
     <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="Utils.cpp" />
     <ClCompile Include="Materials.cpp" />
+    <ClCompile Include="PrimitiveGeometry.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="template\common.h">

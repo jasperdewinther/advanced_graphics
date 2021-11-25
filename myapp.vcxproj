@@ -126,6 +126,7 @@
     <ClCompile Include="Materials.cpp" />
     <ClCompile Include="MyApp.cpp" />
     <ClCompile Include="Plane.cpp" />
+    <ClCompile Include="PrimitiveGeometry.cpp" />
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="template\template.cpp">

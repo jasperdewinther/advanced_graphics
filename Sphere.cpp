@@ -2,11 +2,13 @@
 #include "Sphere.h"
 
 
-Sphere::Sphere(float3 position, float radius):
+Sphere::Sphere(float3 position, float radius, Material material):
 	pos(position),
 	radius(radius),
 	radius2(radius*radius)
-{}
+{
+	m = material;
+}
 
 void Sphere::intersects(Ray& ray)
 {

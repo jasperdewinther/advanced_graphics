@@ -8,9 +8,9 @@ class Sphere : public PrimitiveGeometry
 public:
 	float3 pos;
 
-	Sphere(float3 position, float radius);
-	void intersects(Ray& ray);
-	float3 get_normal(float3& intersection_pos);
+	Sphere(float3 position, float radius, Material material);
+	void intersects(Ray& ray) override;
+	float3 get_normal(float3& intersection_pos) override;
 	void set_r(float radius);
 	float r();
 	float r2();

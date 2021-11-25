@@ -22,10 +22,11 @@ std::vector<Ray> generate_primary_rays(const float3& camerapos, const float3& ca
 	float3 up = cross(camera_direction,side);
 	side = normalize(side);
 	up = normalize(up);
-	if (side.x < 0) side = side * -1;
-	if (up.y < 0) up = up * -1;
+	//if (side.x < 0) side = side * -1;
+	//if (up.y < 0) up = up * -1;
 
 	std::vector<Ray> rays = {};
+	rays.reserve(width * height);
 
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
