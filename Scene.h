@@ -9,7 +9,7 @@ class Scene
 	std::vector<PrimitiveGeometry*> scene = {};
 public:
 	Scene();
-	float3 trace_scene(Ray& r, float3& energy, const float3& sun_dir);
+	float3 trace_scene(Ray& r, float3& energy, const float3& sun_dir, int max_bounces);
 	void find_intersection(const std::vector<PrimitiveGeometry*>& scene, Ray& r);
 	void delete_scene();
 };

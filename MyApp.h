@@ -8,8 +8,9 @@ namespace Tmpl8
 class MyApp : public TheApp
 {
 private:
-	float total_time = 0;
 	Scene s;
+	float scene_progress; //between 0 and 1 where a scene progress of 0 has the same camera position as 1;
+	bool block_progress;
 public:
 	// game flow methods
 	void Init();
@@ -19,8 +20,8 @@ public:
 	void MouseUp( int button ) { /* implement if you want to detect mouse button presses */ }
 	void MouseDown( int button ) { /* implement if you want to detect mouse button presses */ }
 	void MouseMove( int x, int y ) { mousePos.x = x, mousePos.y = y; }
-	void KeyUp( int key ) { /* implement if you want to handle keys */ }
-	void KeyDown( int key ) { /* implement if you want to handle keys */ }
+	void KeyUp(int key);
+	void KeyDown(int key);
 	// data members
 	int2 mousePos;
 };

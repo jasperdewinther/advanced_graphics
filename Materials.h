@@ -20,10 +20,10 @@ struct MaterialData
 };
 
 const MaterialData materials[6] = {
-	MaterialData{float3(1.f,0.f,0.f), 0.1f},
+	MaterialData{float3(1.f,0.f,0.f), 0.5f},
 	MaterialData{float3(1.f,1.f,1.f), 1.f},
-	MaterialData{[](const float3& pos, const float3& norm) {return (((int)pos.x + (int)pos.z) & 1) ? float3(0.f,0.f,1.f) : float3(0.f,1.f,0.f); }, 0.1f},
+	MaterialData{[](const float3& pos, const float3& norm) {return (((int)pos.x + (int)pos.z) & 1) ? float3(0.f,0.f,1.f) : float3(0.f,1.f,0.f); }, 0.5f},
 	MaterialData{[](const float3& pos, const float3& norm) {return (norm+1)/2; } , 0.1f},
-	MaterialData{float3(1.f,0.f,1.f), 0.1f},
-	MaterialData{float3(0.f,1.f,1.f), 0.1f},
+	MaterialData{float3(1.f,0.f,1.f), 0.5f},
+	MaterialData{float3(0.f,1.f,1.f), 0.5f},
 };

@@ -22,14 +22,17 @@ void MyApp::Init()
 // -----------------------------------------------------------
 void MyApp::Tick( float deltaTime )
 {
+	if (!block_progress) {
+		scene_progress += ((deltaTime / 1000) / 10);
+		scene_progress = scene_progress - (long)scene_progress;
+	}
 	Timer t = Timer();
-	total_time += deltaTime/1000;
-	float3 camera_pos = float3(sin(total_time / 10)*10, 3, cos(total_time / 10)*10);
+	float3 camera_pos = float3(sin(scene_progress * PI*2)*10, 3, cos(scene_progress * PI*2)*10);
 	float3 camera_dir = normalize(-camera_pos);
 	float3 sun_direction = normalize(float3(1,1,1)); //TODO implement correctly using primitives
 
 
-	std::vector<Ray> rays = generate_primary_rays(camera_pos, camera_dir, 90 + sin(total_time / 10)*60, screen->width, screen->height);
+	std::vector<Ray> rays = generate_primary_rays(camera_pos, camera_dir, 90 + sin(scene_progress*PI*2)*60, screen->width, screen->height);
 	float t_ray_generation = t.elapsed();
 	t.reset();
 	
@@ -40,7 +43,7 @@ void MyApp::Tick( float deltaTime )
 	for( int x = 0; x < screen->width; x++ ) for( int y = 0; y < screen->height; y++ )
 	{
 		Ray r = rays[x + screen->width * y];
-		float3 color = s.trace_scene(r, float3(1, 1, 1), sun_direction);
+		float3 color = s.trace_scene(r, float3(1, 1, 1), sun_direction,6);
 
 		uint red = (uint)(color.x * 255.0f);
 		uint green = (uint)(color.y * 255.0f);
@@ -50,10 +53,10 @@ void MyApp::Tick( float deltaTime )
 
 	}
 	float t_drawing_pixels = t.elapsed();
-	printf("ray gen: %f draw: %f\n", t_ray_generation, t_drawing_pixels);
+	//printf("ray gen: %f draw: %f\n", t_ray_generation, t_drawing_pixels);
 
 
-	float3 top_left = rays[0].d;
+	/*float3 top_left = rays[0].d;
 	float3 top_right = rays[screen->width - 1].d;
 	float3 bot_left = rays[screen->height * (screen->width - 1) + 1].d;
 	float3 bot_right = rays[screen->height * screen->width - 1].d;
@@ -63,12 +66,26 @@ void MyApp::Tick( float deltaTime )
 	printf("top left -- %f %f %f\n", top_left.x, top_left.y, top_left.z);
 	printf("top rigt -- %f %f %f\n", top_right.x, top_right.y, top_right.z);
 	printf("bot left -- %f %f %f\n", bot_left.x, bot_left.y, bot_left.z);
-	printf("bot rigt -- %f %f %f\n", bot_right.x, bot_right.y, bot_right.z);
+	printf("bot rigt -- %f %f %f\n", bot_right.x, bot_right.y, bot_right.z);*/
 }
 
 
+void Tmpl8::MyApp::KeyUp(int key)
+{
+	if (key == 32) {
+		block_progress = false;
+	}
+}
+
+void Tmpl8::MyApp::KeyDown(int key)
+{
+	if (key == 32) {
+		block_progress = true;
+	}
+}
 
 
 void MyApp::Shutdown() {
 	s.delete_scene();
 }
+

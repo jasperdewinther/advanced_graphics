@@ -11,8 +11,8 @@ Scene::Scene() {
 	scene.push_back(new Plane(float3(0, 1, 0), 0, Material::checkerboard));
 }
 
-float3 Scene::trace_scene(Ray& r, float3& energy, const float3& sun_dir) {
-	if (energy.x < 0.1f && energy.y < 0.1f && energy.z < 0.1f) {
+float3 Scene::trace_scene(Ray& r, float3& energy, const float3& sun_dir, int max_bounces) {
+	if (max_bounces == 0) {
 		return float3(0, 0, 0);
 	}
 	find_intersection(scene, r);
@@ -27,11 +27,13 @@ float3 Scene::trace_scene(Ray& r, float3& energy, const float3& sun_dir) {
 		float s = m.specularity;
 
 		float3 material_color = m.get_color(hitPos, normal);
-		Ray sun_ray = Ray(hitPos + sun_dir*0.1, sun_dir);
+		Ray sun_ray = Ray(hitPos + sun_dir*0.00001, sun_dir);
 		find_intersection(scene, sun_ray);
-		float3 diffuse_color = float3(0, 0, 0);
-		if (sun_ray.hitptr == nullptr) {
-			diffuse_color = material_color * max(dot(sun_dir, normal), 0.f); //TODO: add distance illumination
+		float diffuse_contrib = 0;
+		if (max_bounces == 1) {
+			diffuse_contrib = 1.f;
+		} else if (sun_ray.hitptr == nullptr) {
+			diffuse_contrib = max(dot(sun_dir, normal), 0.f); //TODO: add distance illumination
 		}
 
 
@@ -44,13 +46,13 @@ float3 Scene::trace_scene(Ray& r, float3& energy, const float3& sun_dir) {
 		float3 specular_color = float3(0, 0, 0);
 		if (m.specularity > 0.f) {
 			float3 new_dir = reflect(r.d, normal);
-			Ray bounced_ray = Ray(hitPos + new_dir*0.0001, new_dir);
-			specular_color = trace_scene(bounced_ray, energy, sun_dir);
+			Ray bounced_ray = Ray(hitPos + new_dir*0.1f, new_dir);
+			specular_color = trace_scene(bounced_ray, energy, sun_dir, max_bounces-1);
 		}
-		return d * diffuse_color + s * specular_color;
+		return material_color * ((d * diffuse_contrib) + (s * specular_color));
 	}
 	else {
-		return float3(fabs(r.d.x), fabs(r.d.y), fabs(r.d.z));
+		return float3(0.6,0.8,0.95);//rainbow sky float3(fabs(r.d.x), fabs(r.d.y), fabs(r.d.z));
 	}
 }
 
