@@ -7,6 +7,7 @@ class MyApp : public TheApp
 {
 private:
 	float total_time = 0;
+	std::vector<PrimitiveGeometry> scene = {};
 public:
 	// game flow methods
 	void Init();

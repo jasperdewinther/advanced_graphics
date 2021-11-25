@@ -123,6 +123,7 @@
   </ItemDefinitionGroup>
   <!-- END Custom section -->
   <ItemGroup>
+    <ClCompile Include="Materials.cpp" />
     <ClCompile Include="MyApp.cpp" />
     <ClCompile Include="Plane.cpp" />
     <ClCompile Include="Ray.cpp" />
@@ -137,6 +138,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cl\tools.cl" />
+    <ClInclude Include="Materials.h" />
     <ClInclude Include="PrimitiveGeometry.h" />
     <ClInclude Include="MyApp.h" />
     <ClInclude Include="Plane.h" />

@@ -9,6 +9,7 @@
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="Materials.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="template\common.h">
@@ -26,6 +27,7 @@
     <ClInclude Include="Ray.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="Utils.h" />
+    <ClInclude Include="Materials.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="template\LICENSE">

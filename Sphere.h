@@ -1,7 +1,7 @@
 #pragma once
 #include "PrimitiveGeometry.h"
 
-class Sphere : PrimitiveGeometry
+class Sphere : public PrimitiveGeometry
 {
 	float radius;
 	float radius2;
@@ -10,6 +10,7 @@ public:
 
 	Sphere(float3 position, float radius);
 	void intersects(Ray& ray);
+	float3 get_normal(float3& intersection_pos);
 	void set_r(float radius);
 	float r();
 	float r2();

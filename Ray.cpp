@@ -30,8 +30,8 @@ std::vector<Ray> generate_primary_rays(const float3& camerapos, const float3& ca
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			float px = ((float)x / (float)width);
-			float py = ((float)y / (float)width);
-			float3 dir = screen_center + (side * (px * aspect_ratio)) + (up * py);
+			float py = ((float)y / (float)height);
+			float3 dir = screen_center + (side * ((px-0.5f) * aspect_ratio)) + (up * ((py*-1)+0.5f));
 			dir = dir - camerapos;
 			dir = normalize(dir);
 			rays.push_back(Ray(camerapos, dir));

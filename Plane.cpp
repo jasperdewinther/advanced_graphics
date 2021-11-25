@@ -12,3 +12,8 @@ void Plane::intersects(Ray& ray)
 		ray.hitptr = this;
 	}
 }
+
+float3 Plane::get_normal(float3& intersection_pos)
+{
+	return n;
+}

@@ -22,6 +22,13 @@ void Sphere::intersects(Ray& ray)
 	}
 }
 
+float3 Sphere::get_normal(float3& intersection_pos)
+{
+	float3 n = intersection_pos - pos;
+	normalize(n);
+	return n;
+}
+
 void Sphere::set_r(float new_radius)
 {
 	radius = new_radius;
