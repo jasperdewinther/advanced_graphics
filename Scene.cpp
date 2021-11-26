@@ -64,7 +64,7 @@ void Scene::find_intersection(const std::vector<PrimitiveGeometry*>& scene, Ray&
 
 void Scene::delete_scene()
 {
-	for (auto p : scene) {
+	/*for (auto p : scene) {
 		delete p;
-	}
+	}*/
 }

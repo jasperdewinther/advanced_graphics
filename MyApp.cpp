@@ -14,6 +14,7 @@ TheApp* CreateApp() { return new MyApp(); }
 void MyApp::Init()
 {
 	// anything that happens only once at application start goes here
+	total_time = Timer();
 	s = Scene();
 }
 
@@ -23,8 +24,12 @@ void MyApp::Init()
 void MyApp::Tick( float deltaTime )
 {
 	if (!block_progress) {
-		scene_progress += ((deltaTime / 1000) / 10);
-		scene_progress = scene_progress - (long)scene_progress;
+		scene_progress += ((100.0 / 1000) / 10);
+		if (scene_progress > 1.0) {
+			Shutdown();
+			throw exception();
+		}
+		//scene_progress = scene_progress - (long)scene_progress;
 	}
 	Timer t = Timer();
 	float3 camera_pos = float3(sin(scene_progress * PI*2)*10, 3, cos(scene_progress * PI*2)*10);
@@ -86,6 +91,7 @@ void Tmpl8::MyApp::KeyDown(int key)
 
 
 void MyApp::Shutdown() {
+	printf("total runtime: %f", total_time.elapsed());
 	s.delete_scene();
 }
 

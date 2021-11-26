@@ -11,6 +11,7 @@ private:
 	Scene s;
 	float scene_progress; //between 0 and 1 where a scene progress of 0 has the same camera position as 1;
 	bool block_progress;
+	Timer total_time;
 public:
 	// game flow methods
 	void Init();
