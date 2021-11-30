@@ -126,7 +126,9 @@
     <ClCompile Include="Materials.cpp" />
     <ClCompile Include="MyApp.cpp" />
     <ClCompile Include="Plane.cpp" />
+    <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="PrimitiveGeometry.cpp" />
+    <ClCompile Include="Light.cpp" />
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="Sphere.cpp" />
@@ -140,9 +142,11 @@
   <ItemGroup>
     <ClInclude Include="cl\tools.cl" />
     <ClInclude Include="Materials.h" />
+    <ClInclude Include="PointLight.h" />
     <ClInclude Include="PrimitiveGeometry.h" />
     <ClInclude Include="MyApp.h" />
     <ClInclude Include="Plane.h" />
+    <ClInclude Include="Light.h" />
     <ClInclude Include="Ray.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="Sphere.h" />

@@ -10,6 +10,7 @@ enum Material {
 	normal = 3,
 	magenta= 4,
 	cyan = 5,
+	white = 6
 };
 
 struct MaterialData
@@ -19,11 +20,12 @@ struct MaterialData
 	float3 get_color(const float3& pos, const float3& norm);
 };
 
-const MaterialData materials[6] = {
-	MaterialData{float3(1.f,0.f,0.f), 0.5f},
-	MaterialData{float3(1.f,1.f,1.f), 1.f},
-	MaterialData{[](const float3& pos, const float3& norm) {return (((int)pos.x + (int)pos.z) & 1) ? float3(0.f,0.f,1.f) : float3(0.f,1.f,0.f); }, 0.5f},
+const MaterialData materials[7] = {
+	MaterialData{float3(1.f,0.f,0.f), 0.0f},
+	MaterialData{float3(1.f,1.f,1.f), 0.99f},
+	MaterialData{[](const float3& pos, const float3& norm) {return (((int)pos.x + (int)pos.z) & 1) ? float3(0.f,0.f,1.f) : float3(0.f,1.f,0.f); }, 0.0f},
 	MaterialData{[](const float3& pos, const float3& norm) {return (norm+1)/2; } , 0.1f},
-	MaterialData{float3(1.f,0.f,1.f), 0.5f},
+	MaterialData{float3(1.f,0.f,1.f), 0.1f},
 	MaterialData{float3(0.f,1.f,1.f), 0.5f},
+	MaterialData{float3(1.f,1.f,1.f), 0.0f},
 };

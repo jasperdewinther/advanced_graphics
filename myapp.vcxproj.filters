@@ -5,12 +5,24 @@
       <Filter>template</Filter>
     </ClCompile>
     <ClCompile Include="MyApp.cpp" />
-    <ClCompile Include="Plane.cpp" />
     <ClCompile Include="Ray.cpp" />
-    <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="Materials.cpp" />
-    <ClCompile Include="PrimitiveGeometry.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="PrimitiveGeometry.cpp">
+      <Filter>geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="Plane.cpp">
+      <Filter>geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="Sphere.cpp">
+      <Filter>geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="Light.cpp">
+      <Filter>lights</Filter>
+    </ClCompile>
+    <ClCompile Include="PointLight.cpp">
+      <Filter>lights</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="template\common.h">
@@ -23,12 +35,24 @@
     <ClInclude Include="cl\tools.cl">
       <Filter>template\cl</Filter>
     </ClInclude>
-    <ClInclude Include="Plane.h" />
-    <ClInclude Include="PrimitiveGeometry.h" />
     <ClInclude Include="Ray.h" />
-    <ClInclude Include="Sphere.h" />
     <ClInclude Include="Materials.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="PrimitiveGeometry.h">
+      <Filter>geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="Plane.h">
+      <Filter>geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="Sphere.h">
+      <Filter>geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="Light.h">
+      <Filter>lights</Filter>
+    </ClInclude>
+    <ClInclude Include="PointLight.h">
+      <Filter>lights</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="template\LICENSE">
@@ -47,6 +71,12 @@
     </Filter>
     <Filter Include="template\cl">
       <UniqueIdentifier>{dc41819e-b6c1-4070-b4c1-0849e444ca7e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="geometry">
+      <UniqueIdentifier>{b0a51d3f-0ee0-4eaa-8d5a-3582fb785c74}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lights">
+      <UniqueIdentifier>{9d4823ad-c586-4770-b7f9-90a5bb92e9e7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

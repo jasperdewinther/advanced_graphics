@@ -2,9 +2,9 @@
 #include "Plane.h"
 
 
-Plane::Plane(float3 normal, float distance, Material material):
+Plane::Plane(float3 normal, float distance_from_origin, Material material):
 	n(normalize(normal)),
-	d(distance)
+	d(distance_from_origin)
 {
 	m = material;
 }
@@ -12,13 +12,17 @@ Plane::Plane(float3 normal, float distance, Material material):
 
 void Plane::intersects(Ray& ray) const
 {
-	float t = -(dot(ray.o, n) - d) / dot(ray.d, n);
-	if (std::isnan(t)) { //check if nan
+	float div = dot(n, ray.d);
+	if (div == 0 && dot(ray.o, n)+d == 0) {
 		ray.t = 0;
 		ray.hitptr = this;
-	} else if (t < ray.t && t >= 0 ) {
-		ray.t = t;
-		ray.hitptr = this;
+	}
+	else {
+		float t = -(dot(ray.o, n) + d) / div;
+		if (t < ray.t && t >= 0) {
+			ray.t = t;
+			ray.hitptr = this;
+		}
 	}
 }
 

@@ -15,4 +15,4 @@ public:
 	Ray(float3 origin, float3 direction);
 };
 
-std::vector<Ray> generate_primary_rays(const float3& camerapos, const float3& camera_direction, float fov, int width, int height); //fov in horizontal degrees
+void generate_primary_rays(const float3& camerapos, const float3& camera_direction, float fov, int width, int height, Ray* rays, int nthreads); //fov in horizontal degrees

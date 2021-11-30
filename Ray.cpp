@@ -9,7 +9,7 @@ Ray::Ray(float3 origin, float3 direction):
 {}
 
 
-std::vector<Ray> generate_primary_rays(const float3& camerapos, const float3& camera_direction, float fov, int width, int height) {
+void generate_primary_rays(const float3& camerapos, const float3& camera_direction, float fov, int width, int height, Ray* rays, int nthreads) {
 	float aspect_ratio = (float)width / (float)height;
 	float half_aspect_ratio = aspect_ratio / 2;
 	float3 screen_center = camerapos + (camera_direction * (float)(half_aspect_ratio/tan(fov*PI / 360.0)));
@@ -22,24 +22,27 @@ std::vector<Ray> generate_primary_rays(const float3& camerapos, const float3& ca
 	float3 up = cross(camera_direction,side);
 	side = normalize(side);
 	up = normalize(up);
-	//if (side.x < 0) side = side * -1;
-	//if (up.y < 0) up = up * -1;
 
-	std::vector<Ray> rays = {};
-	rays.reserve(width * height);
-
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
-			float px = ((float)x / (float)width);
-			float py = ((float)y / (float)height);
-			float3 dir = screen_center + (side * ((px-0.5f) * aspect_ratio)) + (up * ((py*-1)+0.5f));
-			dir = dir - camerapos;
-			dir = normalize(dir);
-			rays.push_back(Ray(camerapos, dir));
-			//printf("%s %s %s %s %s %i %i %s\n", camerapos.to_string().c_str(), camera_direction.to_string().c_str(), screen_center.to_string().c_str(), side.to_string().c_str(), up.to_string().c_str(), x, y, dir.to_string().c_str());
-		}
+	float columns_per_thread = (float)height/(float)nthreads;
+	std::vector<std::thread> t = {};
+	t.reserve(nthreads);
+	for (int i = 0; i < nthreads; i++) {
+		t.push_back(std::thread([i, &columns_per_thread, &width, &height, &rays, &screen_center, &side, &aspect_ratio, &up, &camerapos] () {
+			for (int y = (int)(i*columns_per_thread); y < (float)(i+1) * columns_per_thread; y++) {
+				for (int x = 0; x < width; x++) {
+					float px = (float)x / (float)width;
+					float py = (float)y / (float)height;
+					float3 dir = screen_center + (side * ((px - 0.5f) * aspect_ratio)) + (up * ((py * -1) + 0.5f));
+					dir = dir - camerapos;
+					dir = normalize(dir);
+					rays[x + width * y] = Ray(camerapos, dir);
+				}
+			}
+		}));
 	}
 
-	return rays;
+	for (auto& thread : t) {
+		thread.join();
+	}
 }
 

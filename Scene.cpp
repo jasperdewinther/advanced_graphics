@@ -3,19 +3,28 @@
 
 
 Scene::Scene() {
-	scene.push_back(new Sphere(float3(0, 2, 0), 2, Material::normal));
-	scene.push_back(new Sphere(float3(3, 0, 0), 1, Material::red));
-	scene.push_back(new Sphere(float3(3, 1, 2.5), 1, Material::magenta));
-	scene.push_back(new Sphere(float3(-3, 1, -1), 1, Material::cyan));
-	scene.push_back(new Sphere(float3(-4, 2, -4), 2, Material::mirror));
-	scene.push_back(new Plane(float3(0, 1, 0), 0, Material::checkerboard));
+	primitives.push_back(new Sphere(float3(0, 2, 0), 2, Material::normal));
+	primitives.push_back(new Sphere(float3(3, 0, 0), 1, Material::red));
+	primitives.push_back(new Sphere(float3(3, 1, 2.5), 1, Material::magenta));
+	primitives.push_back(new Sphere(float3(-3, 1, -1), 1, Material::cyan));
+	primitives.push_back(new Sphere(float3(-4, 2, -4), 2, Material::mirror));
+
+	primitives.push_back(new Plane(float3(0, 1, 0), 0, Material::checkerboard));
+	primitives.push_back(new Plane(float3(0, -1, 0), 20, Material::white));
+	primitives.push_back(new Plane(float3(1, 0, 0), 20, Material::white));
+	primitives.push_back(new Plane(float3(-1, 0, 0), 20, Material::white));
+	primitives.push_back(new Plane(float3(0, 0, 1), 20, Material::white));
+	primitives.push_back(new Plane(float3(0, 0, -1), 20, Material::white));
+
+	lights.push_back(new PointLight(float3(0,10,0), float3(1,1,1), 10000.0));
+	//lights.push_back(new PointLight(float3(0, 2, 5), float3(1, 1, 1), 50.0));
 }
 
-float3 Scene::trace_scene(Ray& r, float3& energy, const float3& sun_dir, int max_bounces) {
+float3 Scene::trace_scene(Ray& r, int max_bounces, const PrimitiveGeometry* to_ignore) const {
 	if (max_bounces == 0) {
 		return float3(0, 0, 0);
 	}
-	find_intersection(scene, r);
+	find_intersection(primitives, r, to_ignore);
 
 
 	if (r.hitptr != nullptr) {
@@ -27,39 +36,47 @@ float3 Scene::trace_scene(Ray& r, float3& energy, const float3& sun_dir, int max
 		float s = m.specularity;
 
 		float3 material_color = m.get_color(hitPos, normal);
-		Ray sun_ray = Ray(hitPos + sun_dir*0.00001, sun_dir);
-		find_intersection(scene, sun_ray);
-		float diffuse_contrib = 0;
-		if (max_bounces == 1) {
-			diffuse_contrib = 1.f;
-		} else if (sun_ray.hitptr == nullptr) {
-			diffuse_contrib = max(dot(sun_dir, normal), 0.f); //TODO: add distance illumination
+		float3 direct_light = float3(0,0,0); 
+		float3 specular_color = float3(0,0,0);
+
+		if (s > 0.f) {
+			Ray bounced_ray = Ray(hitPos, reflect(r.d, normal));
+			specular_color = trace_scene(bounced_ray, max_bounces-1, r.hitptr);
 		}
-
-
-
-
-		/*energy = energy - (d * (1 - diffuse_color)); //TODO implement energy 
-		energy.x = max(energy.x, 0.0f);
-		energy.y = max(energy.y, 0.0f);
-		energy.z = max(energy.z, 0.0f);*/
-		float3 specular_color = float3(0, 0, 0);
-		if (m.specularity > 0.f) {
-			float3 new_dir = reflect(r.d, normal);
-			Ray bounced_ray = Ray(hitPos + new_dir*0.1f, new_dir);
-			specular_color = trace_scene(bounced_ray, energy, sun_dir, max_bounces-1);
+		if (d > 0.f) {
+			direct_light = find_direct_light_value(primitives, hitPos, normal, r.hitptr);
 		}
-		return material_color * ((d * diffuse_contrib) + (s * specular_color));
+		return material_color * ((d * direct_light) + (s * specular_color));
 	}
 	else {
-		return float3(0.6,0.8,0.95);//rainbow sky float3(fabs(r.d.x), fabs(r.d.y), fabs(r.d.z));
+		return float3(0,0,0);//rainbow sky float3(fabs(r.d.x), fabs(r.d.y), fabs(r.d.z));
 	}
 }
 
-void Scene::find_intersection(const std::vector<PrimitiveGeometry*>& scene, Ray& r) {
+void Scene::find_intersection(const std::vector<PrimitiveGeometry*>& scene, Ray& r, const PrimitiveGeometry* to_ignore) const {
 	for (auto& obj : scene) {
+		if (obj == to_ignore) {
+			continue;
+		}
 		obj->intersects(r);
 	}
+}
+
+float3 Scene::find_direct_light_value(const std::vector<PrimitiveGeometry*>& scene, const float3& start_pos, const float3& normal, const PrimitiveGeometry* to_ignore) const {
+	float3 l = float3(0, 0, 0);
+	for (auto& obj : lights) {
+		float3 vec_to_light = obj->pos - start_pos;
+		float3 dir = normalize(vec_to_light);
+		
+		Ray r = Ray(start_pos, dir);
+
+		find_intersection(scene, r, to_ignore);
+		if (r.hitptr != nullptr && r.t < sqrt(dot(vec_to_light, vec_to_light))) {
+			continue;
+		}
+		l += obj->color * max(dot(dir, normal), 0.f) * obj->calculate_light_intensity(r);
+	}
+	return l;
 }
 
 void Scene::delete_scene()
