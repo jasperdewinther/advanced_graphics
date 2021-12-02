@@ -38,7 +38,8 @@ void MyApp::Tick( float deltaTime )
 
 	screen->Clear( 0 );
 	t.reset();
-	render_scene();
+	trace_rays();
+	render_pixels();
 	float time_trace = t.elapsed();
 
 
@@ -50,6 +51,10 @@ void Tmpl8::MyApp::fix_ray_buffer()
 	if (rays == nullptr || screen->width != old_width || screen->height != old_height) {
 		delete[] rays;
 		rays = (Ray*)malloc(sizeof(Ray) * screen->width * screen->height);
+
+		delete[] pixel_colors;
+		pixel_colors = (float3*)malloc(sizeof(float3) * screen->width * screen->height);
+
 		old_width = screen->width;
 		old_height = screen->height;
 	}
@@ -63,7 +68,7 @@ void Tmpl8::MyApp::set_progression()
 	}
 }
 
-void Tmpl8::MyApp::render_scene()
+void Tmpl8::MyApp::trace_rays()
 {
 	float columns_per_thread = (float)screen->height / (float)nthreads;
 	float rows_per_thread = (float)screen->width / (float)nthreads;
@@ -74,13 +79,7 @@ void Tmpl8::MyApp::render_scene()
 			for (int y = (int)((i/nthreads) * columns_per_thread); y < (float)((i / nthreads) + 1) * columns_per_thread; y++) {
 				for (int x = (int)((i%nthreads) * rows_per_thread); x < (float)((i % nthreads) + 1) * rows_per_thread; x++) {
 					Ray r = rays[x + screen->width * y];
-					float3 color = s.trace_scene(r, 100);
-
-					uint red = min((uint)(color.x * 255.0f), 255u);
-					uint green = min((uint)(color.y * 255.0f), 255u);
-					uint blue = min((uint)(color.z * 255.0f), 255u);
-
-					screen->Plot(x, y, (red << 16) + (green << 8) + blue);
+					pixel_colors[x + screen->width * y] = s.trace_scene(r, 100);
 				}
 			}
 			}));
@@ -90,6 +89,22 @@ void Tmpl8::MyApp::render_scene()
 		thread.join();
 	}
 }
+
+void Tmpl8::MyApp::render_pixels() {
+	for (int y = 0; y < screen->height; y++) {
+		for (int x = 0; x < screen->width; x++) {
+			float3 color = pixel_colors[x + screen->width * y];
+
+			uint red = min((uint)(color.x * 255.0f), 255u);
+			uint green = min((uint)(color.y * 255.0f), 255u);
+			uint blue = min((uint)(color.z * 255.0f), 255u);
+
+			screen->Plot(x, y, (red << 16) + (green << 8) + blue);
+		}
+	}
+};
+
+
 
 void Tmpl8::MyApp::KeyDown(int key)
 {

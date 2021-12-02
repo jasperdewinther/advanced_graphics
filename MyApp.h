@@ -16,10 +16,12 @@ private:
 	int old_width;
 	int old_height;
 	Ray* rays;
+	float3* pixel_colors;
 
 	void fix_ray_buffer();
 	void set_progression();
-	void render_scene();
+	void trace_rays();
+	void render_pixels();
 
 public:
 	// game flow methods
