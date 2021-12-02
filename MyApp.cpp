@@ -66,12 +66,13 @@ void Tmpl8::MyApp::set_progression()
 void Tmpl8::MyApp::render_scene()
 {
 	float columns_per_thread = (float)screen->height / (float)nthreads;
+	float rows_per_thread = (float)screen->width / (float)nthreads;
 	std::vector<std::thread> t = {};
-	t.reserve(nthreads);
-	for (int i = 0; i < nthreads; i++) {
-		t.push_back(std::thread([i, &columns_per_thread, this]() {
-			for (int y = (int)(i * columns_per_thread); y < (float)(i + 1) * columns_per_thread; y++) {
-				for (int x = 0; x < screen->width; x++) {
+	t.reserve(nthreads*nthreads);
+	for (int i = 0; i < nthreads*nthreads; i++) {
+		t.push_back(std::thread([i, &columns_per_thread, &rows_per_thread, this]() {
+			for (int y = (int)((i/nthreads) * columns_per_thread); y < (float)((i / nthreads) + 1) * columns_per_thread; y++) {
+				for (int x = (int)((i%nthreads) * rows_per_thread); x < (float)((i % nthreads) + 1) * rows_per_thread; x++) {
 					Ray r = rays[x + screen->width * y];
 					float3 color = s.trace_scene(r, 100);
 
