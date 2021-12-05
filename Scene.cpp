@@ -33,6 +33,9 @@ float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 		MaterialData m = materials[r.hitptr->m];
 
 		if (m.transparent > 0) {
+			//calculate angle based on refractive index
+			//make new ray
+			
 
 		}
 
