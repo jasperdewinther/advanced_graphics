@@ -12,9 +12,9 @@ class Scene
 	std::vector<Light*> lights = {};
 public:
 	Scene();
-	float3 trace_scene(Ray& r, int max_bounces, const PrimitiveGeometry* to_ignore=nullptr) const;
-	void find_intersection(const std::vector<PrimitiveGeometry*>& scene, Ray& r, const PrimitiveGeometry* to_ignore=nullptr) const;
-	float3 find_direct_light_value(const std::vector<PrimitiveGeometry*>& scene, const float3& start_pos, const float3& normal, const PrimitiveGeometry* to_ignore) const;
+	float3 trace_scene(Ray& r, int max_bounces) const;
+	void find_intersection(const std::vector<PrimitiveGeometry*>& scene, Ray& r) const;
+	float3 find_direct_light_value(const std::vector<PrimitiveGeometry*>& scene, const float3& start_pos, const float3& normal) const;
 	void delete_scene();
 };
 

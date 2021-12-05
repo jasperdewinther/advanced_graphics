@@ -18,9 +18,15 @@ void Sphere::intersects(Ray& ray) const
 	float p2 = dot(Q, Q);
 	if (p2 > radius2) return;
 	t -= sqrt(radius2 - p2);
-	if ((t < ray.t) && (t > 0)) {
-		ray.t = t;
-		ray.hitptr = this;
+	if (t < ray.t) {
+		if (t > 0) {
+			ray.t = t;
+			ray.hitptr = this;
+		}
+		else if (dot(C, C) < radius2) {
+
+		}
+
 	}
 }
 

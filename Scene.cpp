@@ -20,17 +20,23 @@ Scene::Scene() {
 	//lights.push_back(new PointLight(float3(0, 2, 5), float3(1, 1, 1), 50.0));
 }
 
-float3 Scene::trace_scene(Ray& r, int max_bounces, const PrimitiveGeometry* to_ignore) const {
+float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 	if (max_bounces == 0) {
 		return float3(0, 0, 0);
 	}
-	find_intersection(primitives, r, to_ignore);
+	find_intersection(primitives, r);
 
 
 	if (r.hitptr != nullptr) {
 		float3 hitPos = r.o + r.d * r.t;
 		float3 normal = r.hitptr->get_normal(hitPos);
 		MaterialData m = materials[r.hitptr->m];
+
+		if (m.transparent > 0) {
+
+		}
+
+
 
 		float d = 1 - m.specularity;
 		float s = m.specularity;
@@ -40,11 +46,12 @@ float3 Scene::trace_scene(Ray& r, int max_bounces, const PrimitiveGeometry* to_i
 		float3 specular_color = float3(0,0,0);
 
 		if (s > 0.f) {
-			Ray bounced_ray = Ray(hitPos, reflect(r.d, normal));
-			specular_color = trace_scene(bounced_ray, max_bounces-1, r.hitptr);
+			float3 new_dir = reflect(r.d, normal);
+			Ray bounced_ray = Ray(hitPos + new_dir*0.00001, new_dir);
+			specular_color = trace_scene(bounced_ray, max_bounces-1);
 		}
 		if (d > 0.f) {
-			direct_light = find_direct_light_value(primitives, hitPos, normal, r.hitptr);
+			direct_light = find_direct_light_value(primitives, hitPos, normal);
 		}
 		return material_color * ((d * direct_light) + (s * specular_color));
 	}
@@ -53,24 +60,22 @@ float3 Scene::trace_scene(Ray& r, int max_bounces, const PrimitiveGeometry* to_i
 	}
 }
 
-void Scene::find_intersection(const std::vector<PrimitiveGeometry*>& scene, Ray& r, const PrimitiveGeometry* to_ignore) const {
+void Scene::find_intersection(const std::vector<PrimitiveGeometry*>& scene, Ray& r) const {
 	for (auto& obj : scene) {
-		if (obj == to_ignore) {
-			continue;
-		}
 		obj->intersects(r);
 	}
 }
 
-float3 Scene::find_direct_light_value(const std::vector<PrimitiveGeometry*>& scene, const float3& start_pos, const float3& normal, const PrimitiveGeometry* to_ignore) const {
+float3 Scene::find_direct_light_value(const std::vector<PrimitiveGeometry*>& scene, const float3& start_pos, const float3& normal) const {
 	float3 l = float3(0, 0, 0);
 	for (auto& obj : lights) {
-		float3 vec_to_light = obj->pos - start_pos;
+		float3 offset_start_pos = (start_pos + normal * 0.00001);
+		float3 vec_to_light = obj->pos - offset_start_pos;
 		float3 dir = normalize(vec_to_light);
 		
-		Ray r = Ray(start_pos, dir);
+		Ray r = Ray(offset_start_pos, dir);
 
-		find_intersection(scene, r, to_ignore);
+		find_intersection(scene, r);
 		if (r.hitptr != nullptr && r.t < sqrt(dot(vec_to_light, vec_to_light))) {
 			continue;
 		}
@@ -81,7 +86,10 @@ float3 Scene::find_direct_light_value(const std::vector<PrimitiveGeometry*>& sce
 
 void Scene::delete_scene()
 {
-	/*for (auto p : scene) {
+	for (auto p : primitives) {
 		delete p;
-	}*/
+	}
+	for (auto p : lights) {
+		delete p;
+	}
 }
