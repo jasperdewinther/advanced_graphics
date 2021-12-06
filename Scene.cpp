@@ -100,7 +100,7 @@ float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 			color.z *= exp(absorbtion.z);
 			return color;
 		}
-		return material_color * ((d * direct_light) + (s * specular_color) + (i * refraction_color));
+		return material_color * ((d * direct_light) + (s * specular_color)) + (i * refraction_color);
 	}
 	else {
 		return float3(0,0,0);//rainbow sky float3(fabs(r.d.x), fabs(r.d.y), fabs(r.d.z));
