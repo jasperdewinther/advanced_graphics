@@ -1,9 +1,27 @@
 #pragma once
-#include "PrimitiveGeometry.h"
 #include "Scene.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+
+
+
+/*implemented:
+- generic ray tracer 
+- free camera in code or along some path at runtime
+- UI using imgui
+- planes and spheres
+- extendable material class 
+- basic scene
+- shadows
+- reflections
+- refraction
+- beers law
+
+- multithreaded rendering
+- anti aliasing
+*/
+
 
 namespace Tmpl8
 {
@@ -26,11 +44,12 @@ private:
 	//all imgui settings
 	bool multithreading = true;
 	int bounces = 10;
-	float scene_progress; //between 0 and 1 where a scene progress of 0 has the same camera position as 1;
-	bool block_progress;
+	float scene_progress = 0; //between 0 and 1 where a scene progress of 0 has the same camera position as 1;
+	bool block_progress = true;
 	int fov = 90;
 	float view_height = 3.f;
 	int upscaling = 8;
+	int antialiasing = 1;
 
 	void fix_ray_buffer();
 	void set_progression();

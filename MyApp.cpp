@@ -5,18 +5,11 @@
 #include "Sphere.h"
 #include "Plane.h"
 
-
-
 TheApp* CreateApp() { return new MyApp(); }
 
-// -----------------------------------------------------------
-// Initialize the application
-// -----------------------------------------------------------
 void MyApp::Init()
 {
-	// anything that happens only once at application start goes here
 	total_time = Timer();
-	s = Scene();
 	ctx = ImGui::CreateContext();
 	ImGui::SetCurrentContext(ctx);
 	ImGui::StyleColorsDark();
@@ -26,13 +19,13 @@ void MyApp::Init()
 	virtual_height = screen->height / upscaling;
 }
 
-// -----------------------------------------------------------
-// Main application tick function - Executed once per frame
-// -----------------------------------------------------------
+
 void MyApp::Tick( float deltaTime )
 {
 	Timer t = Timer();
-	fix_ray_buffer();
+	if (rays == nullptr || virtual_width != old_width || virtual_height != old_height) {
+		fix_ray_buffer();
+	}
 	set_progression();
 	
 	float3 camera_pos = float3(sin(scene_progress * PI*2)*10, view_height, cos(scene_progress * PI*2)*10);
@@ -40,7 +33,7 @@ void MyApp::Tick( float deltaTime )
 	float time_setup = t.elapsed();
 	t.reset();
 	
-	generate_primary_rays(camera_pos, camera_dir, (float)fov, virtual_width, virtual_height, rays, nthreads);
+	generate_primary_rays(camera_pos, camera_dir, (float)fov, virtual_width, virtual_height, rays, nthreads, antialiasing);
 	float time_ray_gen = t.elapsed();
 
 
@@ -57,26 +50,20 @@ void MyApp::Tick( float deltaTime )
 
 void Tmpl8::MyApp::fix_ray_buffer()
 {
-	if (rays == nullptr || virtual_width != old_width || virtual_height != old_height) {
-		delete[] rays;
-		rays = (Ray*)malloc(sizeof(Ray) * virtual_width * virtual_height);
+	delete[] rays;
+	rays = (Ray*)malloc(sizeof(Ray) * virtual_width * virtual_height * antialiasing);
 
-		delete[] pixel_colors;
-		pixel_colors = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
+	delete[] pixel_colors;
+	pixel_colors = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
 
-		old_width = virtual_width;
-		old_height = virtual_height;
-	}
+	old_width = virtual_width;
+	old_height = virtual_height;
 }
 
 void Tmpl8::MyApp::set_progression()
 {
 	if (!block_progress) {
 		scene_progress += ((100.0 / 1000) / 10);
-		/*if ((int)scene_progress == 1) {
-			printf("total runtime: %f", total_time.elapsed());
-			throw exception("full circle");
-		}*/
 		scene_progress = scene_progress - (int)scene_progress;
 	}
 }
@@ -91,8 +78,12 @@ void Tmpl8::MyApp::trace_rays()
 
 			for (float y = (float)i / nthreads; y < virtual_height; y += (float)nthreads) {
 				for (float x = (float)(i % nthreads); x < virtual_width; x += (float)nthreads) {
-					Ray r = rays[(int)x + virtual_width * (int)y];
-					pixel_colors[(int)x + virtual_width * (int)y] = s.trace_scene(r, bounces);
+					float3 accumulated = float3(0, 0, 0);
+					for (int a = 0; a < antialiasing; a++) {
+						Ray r = rays[((int)x + virtual_width * (int)y) * antialiasing + a];
+						accumulated += s.trace_scene(r, bounces);
+					}
+					pixel_colors[(int)x + virtual_width * (int)y] = accumulated/antialiasing;
 				}
 			}
 			//printf("ray: %f i: %i\n", t.elapsed(), i);
@@ -164,6 +155,9 @@ void Tmpl8::MyApp::PostDraw()
 	ImGui::Text("last frame time: %f", ImGui::GetIO().DeltaTime);
 	float3 colors = pixel_colors[(int)(mousePos.x / upscaling + (mousePos.y / upscaling) * virtual_width)];
 	ImGui::Text("cursor color: %f %f %f",colors.x, colors.y, colors.z);
+	if (ImGui::SliderInt("Anti aliasing", &antialiasing, 1, 8)) {
+		fix_ray_buffer();
+	}
 
 	ImGui::End();
 	ImGui::Render();

@@ -9,7 +9,7 @@ MaterialData::MaterialData(std::variant<float3, std::function<float3(float3, flo
 {
 }
 
-float3 MaterialData::get_color(const float3& pos, const float3& norm)
+float3 MaterialData::get_color(const float3& pos, const float3& norm) const
 {
     if (const float3* val = std::get_if<float3>(&color))
         return *val;

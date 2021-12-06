@@ -5,9 +5,9 @@
 Sphere::Sphere(float3 position, float radius, Material material):
 	pos(position),
 	radius(radius),
-	radius2(radius*radius)
+	radius2(radius*radius),
+	m(material)
 {
-	m = material;
 }
 
 void Sphere::intersects(Ray& ray) const
@@ -23,6 +23,7 @@ void Sphere::intersects(Ray& ray) const
 		if (t < ray.t && t > 0) {
 			ray.t = t;
 			ray.hitptr = this;
+			ray.p = Primitive::sphere;
 		}
 	}
 	else {
@@ -34,12 +35,13 @@ void Sphere::intersects(Ray& ray) const
 		if (t < ray.t && t > 0) {
 			ray.t = t;
 			ray.hitptr = this;
+			ray.p = Primitive::sphere;
 		}
 	}
 
 }
 
-float3 Sphere::get_normal(float3& intersection_pos) const
+float3 Sphere::get_normal(const float3& intersection_pos) const
 {
 	float3 n = intersection_pos - pos;
 	if (radius == 1.0) {

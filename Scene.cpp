@@ -3,21 +3,45 @@
 
 
 Scene::Scene() {
-	primitives.push_back(new Sphere(float3(0, 2, 0), 1.5, Material::glass));
-	primitives.push_back(new Sphere(float3(3, 1, 2.5), 1, Material::red_glass));
-	primitives.push_back(new Sphere(float3(-3, 1, -1), 1, Material::cyan));
-	primitives.push_back(new Sphere(float3(-4, 2, -4), 1, Material::mirror));
-	primitives.push_back(new Sphere(float3(6, 4, -6), 4, Material::red_glass));
-	primitives.push_back(new Sphere(float3(0, 2, -6), 2, Material::red_glass));
-	primitives.push_back(new Sphere(float3(-4, 1, -6), 1, Material::red_glass));
-	primitives.push_back(new Sphere(float3(-6, 0.5, -6), 0.5, Material::red_glass));
 
-	primitives.push_back(new Plane(float3(0, 1, 0), 0, Material::checkerboard));
-	primitives.push_back(new Plane(float3(0, -1, 0), 20, Material::white));
-	primitives.push_back(new Plane(float3(1, 0, 0), 20, Material::white));
-	primitives.push_back(new Plane(float3(-1, 0, 0), 20, Material::white));
-	primitives.push_back(new Plane(float3(0, 0, 1), 20, Material::white));
-	primitives.push_back(new Plane(float3(0, 0, -1), 20, Material::white));
+	std::vector<Sphere> s = {
+		Sphere(float3(0, 2, 0), 1.5, Material::glass),
+		Sphere(float3(3, 1, 2.5), 1, Material::red_glass),
+		Sphere(float3(-3, 1, -1), 1, Material::cyan),
+		Sphere(float3(-4, 2, -4), 1, Material::mirror),
+		Sphere(float3(6, 4, -6), 4, Material::red_glass),
+		Sphere(float3(0, 2, -6), 2, Material::red_glass),
+		Sphere(float3(-4, 1, -6), 1, Material::red_glass),
+		Sphere(float3(-6, 0.5, -6), 0.5, Material::red_glass)
+	};
+	n_spheres = s.size();
+	spheres = (Sphere*)malloc(sizeof(Sphere) * n_spheres);
+	for (int i = 0; i < n_spheres; i++) {
+		spheres[i] = s[i];
+	}
+
+	std::vector<Plane> p = {
+		Plane(float3(0, 1, 0), 0, Material::checkerboard),
+		Plane(float3(0, -1, 0), 20, Material::white),
+		Plane(float3(1, 0, 0), 20, Material::white),
+		Plane(float3(-1, 0, 0), 20, Material::white),
+		Plane(float3(0, 0, 1), 20, Material::white),
+		Plane(float3(0, 0, -1), 20, Material::white)
+	};
+	n_planes = p.size();
+	planes = (Plane*)malloc(sizeof(Plane) * n_planes);
+	for (int i = 0; i < n_planes; i++) {
+		planes[i] = p[i];
+	}
+	
+	std::vector<Triangle> obj = get_mesh_from_file("./assets/cube.obj", 1.f, float3(0, 2, 4), Material::normal);
+	n_triangles = obj.size();
+	triangles = (Triangle*)malloc(sizeof(Triangle) * n_triangles);
+	for (int i = 0; i < n_triangles; i++) {
+		triangles[i] = obj[i];
+	}
+
+	
 
 	lights.push_back(new PointLight(float3(0,10,0), float3(1,1,1), 30000.0));
 	//lights.push_back(new PointLight(float3(0, 2, -9), float3(1, 1, 1), 1000.0));
@@ -27,19 +51,18 @@ float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 	if (max_bounces == 0) {
 		return float3(0, 0, 0);
 	}
-	find_intersection(primitives, r);
-
+	find_intersection(r);
 
 	if (r.hitptr != nullptr) {
 		float3 hitPos = r.o + r.d * r.t;
-		float3 normal = r.hitptr->get_normal(hitPos);
+		float3 normal = get_normal_hitptr(r, hitPos);
 		bool leaving = false;
 		if (dot(r.d, normal) > 0) { // if inside circle
 			normal *= -1;
 			leaving = true;
 		}
-
-		MaterialData m = materials[r.hitptr->m];
+		Material mat = get_material_hitptr(r);
+		MaterialData m = materials[(int)mat];
 
 		float3 material_color = m.get_color(hitPos, normal);
 		float3 refraction_color = float3(0, 0, 0);
@@ -79,18 +102,13 @@ float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 			d = 1 - m.specularity;
 			s = m.specularity;
 		}
-
-
-
-
-
 		if (s > 0.f) {
 			float3 new_dir = reflect(r.d, normal);
 			Ray bounced_ray = Ray(hitPos + new_dir*0.00001, new_dir);
 			specular_color = trace_scene(bounced_ray, max_bounces-1);
 		}
 		if (d > 0.f) {
-			direct_light = find_direct_light_value(primitives, hitPos, normal);
+			direct_light = find_direct_light_value(hitPos, normal);
 		}
 		if (leaving) {
 			float3 color = material_color * ((s * specular_color) + (i * refraction_color));
@@ -107,13 +125,19 @@ float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 	}
 }
 
-void Scene::find_intersection(const std::vector<PrimitiveGeometry*>& scene, Ray& r) const {
-	for (auto& obj : scene) {
-		obj->intersects(r);
+void Scene::find_intersection(Ray& r) const {
+	for (int i = 0; i < n_spheres; i++) {
+		spheres[i].intersects(r);
+	}
+	for (int i = 0; i < n_planes; i++) {
+		planes[i].intersects(r);
+	}
+	for (int i = 0; i < n_triangles; i++) {
+		triangles[i].intersects(r);
 	}
 }
 
-float3 Scene::find_direct_light_value(const std::vector<PrimitiveGeometry*>& scene, const float3& start_pos, const float3& normal) const {
+float3 Scene::find_direct_light_value(const float3& start_pos, const float3& normal) const {
 	float3 l = float3(0, 0, 0);
 	for (auto& obj : lights) {
 		float3 offset_start_pos = (start_pos + normal * 0.00001);
@@ -122,7 +146,7 @@ float3 Scene::find_direct_light_value(const std::vector<PrimitiveGeometry*>& sce
 		
 		Ray r = Ray(offset_start_pos, dir);
 
-		find_intersection(scene, r);
+		find_intersection(r);
 		if (r.hitptr != nullptr && r.t < sqrt(dot(vec_to_light, vec_to_light))) {
 			continue;
 		}
@@ -133,9 +157,9 @@ float3 Scene::find_direct_light_value(const std::vector<PrimitiveGeometry*>& sce
 
 void Scene::delete_scene()
 {
-	for (auto p : primitives) {
-		delete p;
-	}
+	delete[] spheres;
+	delete[] planes;
+	delete[] triangles;
 	for (auto p : lights) {
 		delete p;
 	}

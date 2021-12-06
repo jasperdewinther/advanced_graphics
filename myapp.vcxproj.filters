@@ -8,9 +8,6 @@
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="Materials.cpp" />
     <ClCompile Include="Scene.cpp" />
-    <ClCompile Include="PrimitiveGeometry.cpp">
-      <Filter>geometry</Filter>
-    </ClCompile>
     <ClCompile Include="Plane.cpp">
       <Filter>geometry</Filter>
     </ClCompile>
@@ -44,6 +41,11 @@
     <ClCompile Include="lib\imgui\imgui_widgets.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
+    <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="Triangle.cpp">
+      <Filter>geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="RayHelper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="template\common.h">
@@ -59,9 +61,6 @@
     <ClInclude Include="Ray.h" />
     <ClInclude Include="Materials.h" />
     <ClInclude Include="Scene.h" />
-    <ClInclude Include="PrimitiveGeometry.h">
-      <Filter>geometry</Filter>
-    </ClInclude>
     <ClInclude Include="Plane.h">
       <Filter>geometry</Filter>
     </ClInclude>
@@ -101,6 +100,11 @@
     <ClInclude Include="lib\imgui\imstb_truetype.h">
       <Filter>imgui</Filter>
     </ClInclude>
+    <ClInclude Include="Utils.h" />
+    <ClInclude Include="Triangle.h">
+      <Filter>geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="RayHelper.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="template\LICENSE">

@@ -28,7 +28,7 @@ struct MaterialData
 		float refractive_index=0
 	);
 
-	float3 get_color(const float3& pos, const float3& norm);
+	float3 get_color(const float3& pos, const float3& norm) const;
 };
 
 const MaterialData materials[9] = {

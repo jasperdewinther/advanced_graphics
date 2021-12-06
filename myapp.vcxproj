@@ -21,7 +21,7 @@
   <PropertyGroup Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -134,9 +134,9 @@
     <ClCompile Include="MyApp.cpp" />
     <ClCompile Include="Plane.cpp" />
     <ClCompile Include="PointLight.cpp" />
-    <ClCompile Include="PrimitiveGeometry.cpp" />
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="Ray.cpp" />
+    <ClCompile Include="RayHelper.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="template\template.cpp">
@@ -145,6 +145,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precomp.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="Triangle.cpp" />
+    <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cl\tools.cl" />
@@ -159,15 +161,17 @@
     <ClInclude Include="lib\imgui\imstb_truetype.h" />
     <ClInclude Include="Materials.h" />
     <ClInclude Include="PointLight.h" />
-    <ClInclude Include="PrimitiveGeometry.h" />
     <ClInclude Include="MyApp.h" />
     <ClInclude Include="Plane.h" />
     <ClInclude Include="Light.h" />
     <ClInclude Include="Ray.h" />
+    <ClInclude Include="RayHelper.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="template\common.h" />
     <ClInclude Include="template\precomp.h" />
+    <ClInclude Include="Triangle.h" />
+    <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cl\kernels.cl" />

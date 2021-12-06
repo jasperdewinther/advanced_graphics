@@ -1,16 +1,18 @@
 #pragma once
-#include "PrimitiveGeometry.h"
+#include "Materials.h"
+#include "Ray.h"
 
-class Sphere : public PrimitiveGeometry
+class Sphere
 {
 	float radius;
 	float radius2;
 public:
+	Material m;
 	float3 pos;
 
 	Sphere(float3 position, float radius, Material material);
-	void intersects(Ray& ray) const override;
-	float3 get_normal(float3& intersection_pos) const override;
+	void intersects(Ray& ray) const;
+	float3 get_normal(const float3& intersection_pos) const;
 	void set_r(float radius);
 	float r();
 	float r2();
