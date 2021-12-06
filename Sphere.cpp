@@ -13,27 +13,41 @@ Sphere::Sphere(float3 position, float radius, Material material):
 void Sphere::intersects(Ray& ray) const
 {
 	float3 C = pos - ray.o;
-	float t = dot(C, ray.d);
-	float3 Q = C - (t * ray.d);
-	float p2 = dot(Q, Q);
-	if (p2 > radius2) return;
-	t -= sqrt(radius2 - p2);
-	if (t < ray.t) {
-		if (t > 0) {
+	if (dot(C, C) < radius2) {
+		//we are inside sphere
+		float t = dot(C, ray.d);
+		float3 Q = C - (t * ray.d);
+		float p2 = dot(Q, Q);
+		if (p2 > radius2) return;
+		t += sqrt(radius2 - p2);
+		if (t < ray.t && t > 0) {
 			ray.t = t;
 			ray.hitptr = this;
 		}
-		else if (dot(C, C) < radius2) {
-
-		}
-
 	}
+	else {
+		float t = dot(C, ray.d);
+		float3 Q = C - (t * ray.d);
+		float p2 = dot(Q, Q);
+		if (p2 > radius2) return;
+		t -= sqrt(radius2 - p2);
+		if (t < ray.t && t > 0) {
+			ray.t = t;
+			ray.hitptr = this;
+		}
+	}
+
 }
 
 float3 Sphere::get_normal(float3& intersection_pos) const
 {
 	float3 n = intersection_pos - pos;
-	return normalize(n);
+	if (radius == 1.0) {
+		return n;
+	}
+	else {
+		return normalize(n);
+	}
 }
 
 void Sphere::set_r(float new_radius)

@@ -120,6 +120,7 @@ void main()
 	Surface* screen = new Surface( SCRWIDTH, SCRHEIGHT );
 	app = CreateApp();
 	app->screen = screen;
+	app->window = window;
 	app->Init();
 	// done, enter main loop
 	Shader* shader = new Shader(
@@ -141,6 +142,7 @@ void main()
 			shader->SetInputTexture( 0, "c", renderTarget );
 			DrawQuad();
 			shader->Unbind();
+			app->PostDraw();
 			glfwSwapBuffers( window );
 			glfwPollEvents();
 		}

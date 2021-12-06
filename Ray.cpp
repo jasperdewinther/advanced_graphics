@@ -21,6 +21,10 @@ void generate_primary_rays(const float3& camerapos, const float3& camera_directi
 		,camera_direction); //the very small value is used when camera_direction[1] == 0, to still find a perpendicular vector
 	float3 up = cross(camera_direction,side);
 	side = normalize(side);
+	if (up.y < 0) {
+		up.y *= -1;
+		side *= -1;
+	}
 	up = normalize(up);
 
 	float columns_per_thread = (float)height/(float)nthreads;
