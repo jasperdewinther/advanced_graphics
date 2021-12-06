@@ -50,7 +50,7 @@ float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 		float s = 0;
 		float i = 0;
 
-		if (m.transparent > 0) {
+		if (m.transparent < 1.f) {
 			float angle_in = dot(normal, -r.d);
 			float n1 = leaving ? m.refractive_index : 1.f;
 			float n2 = leaving ? 1.f : m.refractive_index;
@@ -62,17 +62,17 @@ float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 			} else {
 				float3 new_dir = normalize(refractive_ratio * r.d + normal * (refractive_ratio * angle_in - sqrt(k)));
 
-				Ray internal_ray = Ray(hitPos + new_dir * 0.00001, new_dir);
-				refraction_color = trace_scene(internal_ray, max_bounces - 1);
+				Ray refracted_ray = Ray(hitPos + new_dir * 0.00001, new_dir);
+				refraction_color = trace_scene(refracted_ray, max_bounces - 1);
 
-				float angle_out = dot(normal * -1, new_dir);
+				float angle_out = dot(-normal, new_dir);
 
 				float Fr_par = pow((n1 * angle_in - n2 * angle_out) / (n1 * angle_in + n2 * angle_out), 2.f);
 				float Fr_per = pow((n1 * angle_out - n2 * angle_in) / (n1 * angle_out + n2 * angle_in), 2.f);
 				float Fr = (Fr_par + Fr_per) / 2.f;
 
 				s = Fr;
-				i = 1.f- Fr;
+				i = 1.f-Fr;
 			}
 		}
 		else {
@@ -93,14 +93,14 @@ float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 			direct_light = find_direct_light_value(primitives, hitPos, normal);
 		}
 		if (leaving) {
-			float3 color = material_color * ((d * direct_light) + (s * specular_color) + (i * refraction_color));
+			float3 color = material_color * ((s * specular_color) + (i * refraction_color));
 			float3 absorbtion = (-material_color * m.transparent * r.t);
 			color.x *= exp(absorbtion.x);
 			color.y *= exp(absorbtion.y);
 			color.z *= exp(absorbtion.z);
 			return color;
 		}
-		return material_color * ((d * direct_light) + (s * specular_color)) + (i * refraction_color);
+		return material_color* ((d * direct_light) + (s * specular_color)) + (i * refraction_color);
 	}
 	else {
 		return float3(0,0,0);//rainbow sky float3(fabs(r.d.x), fabs(r.d.y), fabs(r.d.z));
@@ -126,7 +126,7 @@ float3 Scene::find_direct_light_value(const std::vector<PrimitiveGeometry*>& sce
 		if (r.hitptr != nullptr && r.t < sqrt(dot(vec_to_light, vec_to_light))) {
 			continue;
 		}
-		l += obj->color * max(dot(dir, normal), 0.f) * obj->calculate_light_intensity(r);
+		l += obj->color * max(dot(dir, normal), 0.f) * min(obj->calculate_light_intensity(r), 1.f);
 	}
 	return l;
 }

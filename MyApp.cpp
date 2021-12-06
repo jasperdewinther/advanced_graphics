@@ -138,6 +138,7 @@ void Tmpl8::MyApp::render_pixels() {
 }
 void Tmpl8::MyApp::PostDraw()
 {
+	
 	glfwPollEvents();
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
@@ -161,17 +162,12 @@ void Tmpl8::MyApp::PostDraw()
 	}
 	ImGui::Checkbox("block scene progress", &block_progress);
 	ImGui::Text("last frame time: %f", ImGui::GetIO().DeltaTime);
+	float3 colors = pixel_colors[(int)(mousePos.x / upscaling + (mousePos.y / upscaling) * virtual_width)];
+	ImGui::Text("cursor color: %f %f %f",colors.x, colors.y, colors.z);
 
 	ImGui::End();
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
-
-
-
-void Tmpl8::MyApp::KeyDown(int key)
-{
-	
 }
 
 void MyApp::Shutdown() {
