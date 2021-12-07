@@ -21,6 +21,11 @@
 - multithreaded rendering
 - anti aliasing
 - obj file loading
+
+todo:
+https://en.wikipedia.org/wiki/Fisheye_lens#Mapping_function
+http://blog.marcinchwedczuk.pl/ray-tracing-torus
+
 */
 
 
