@@ -20,6 +20,7 @@
 
 - multithreaded rendering
 - anti aliasing
+- obj file loading
 */
 
 

@@ -34,7 +34,7 @@ Scene::Scene() {
 		planes[i] = p[i];
 	}
 	
-	std::vector<Triangle> obj = get_mesh_from_file("./assets/cube.obj", 1.f, float3(0, 2, 4), Material::normal);
+	std::vector<Triangle> obj = get_mesh_from_file("./assets/cube.obj", 1.f, float3(0, 2, 4), Material::glass);
 	n_triangles = obj.size();
 	triangles = (Triangle*)malloc(sizeof(Triangle) * n_triangles);
 	for (int i = 0; i < n_triangles; i++) {
@@ -57,7 +57,7 @@ float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 		float3 hitPos = r.o + r.d * r.t;
 		float3 normal = get_normal_hitptr(r, hitPos);
 		bool leaving = false;
-		if (dot(r.d, normal) > 0) { // if inside circle
+		if (dot(r.d, normal) > 0) { // if inside object
 			normal *= -1;
 			leaving = true;
 		}
