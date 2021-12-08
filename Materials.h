@@ -34,7 +34,7 @@ struct MaterialData
 const MaterialData materials[9] = {
 	MaterialData(float3(1.f,0.f,0.f), 0.0f),
 	MaterialData(float3(1.f,1.f,1.f), 0.9f),
-	MaterialData([](const float3& pos, const float3& norm) {return (((int)pos.x + (int)pos.z) & 1) ? float3(0.f,1.f,1.f) : float3(1.f,1.f,0.f); }, 0.0f),
+	MaterialData([](const float3& pos, const float3& norm) {return (((int)pos.x + (int)pos.z) & 1) ? float3(0.5f,0.8f,0.8f) : float3(0.8f,0.8f,0.5f); }, 0.0f),
 	MaterialData([](const float3& pos, const float3& norm) {return (norm+1)/2; } , 0.1f),
 	MaterialData(float3(1.f,0.f,1.f), 0.1f),
 	MaterialData(float3(0.f,1.f,1.f), 0.1f),

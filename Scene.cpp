@@ -4,7 +4,7 @@
 
 Scene::Scene() {
 
-	std::vector<Sphere> s = {
+	spheres = {
 		Sphere(float3(0, 2, 0), 1.5, Material::glass),
 		Sphere(float3(3, 1, 2.5), 1, Material::red_glass),
 		Sphere(float3(-3, 1, -1), 1, Material::cyan),
@@ -14,13 +14,8 @@ Scene::Scene() {
 		Sphere(float3(-4, 1, -6), 1, Material::red_glass),
 		Sphere(float3(-6, 0.5, -6), 0.5, Material::red_glass)
 	};
-	n_spheres = s.size();
-	spheres = (Sphere*)malloc(sizeof(Sphere) * n_spheres);
-	for (int i = 0; i < n_spheres; i++) {
-		spheres[i] = s[i];
-	}
 
-	std::vector<Plane> p = {
+	planes = {
 		Plane(float3(0, 1, 0), 0, Material::checkerboard),
 		Plane(float3(0, -1, 0), 20, Material::white),
 		Plane(float3(1, 0, 0), 20, Material::white),
@@ -28,20 +23,9 @@ Scene::Scene() {
 		Plane(float3(0, 0, 1), 20, Material::white),
 		Plane(float3(0, 0, -1), 20, Material::white)
 	};
-	n_planes = p.size();
-	planes = (Plane*)malloc(sizeof(Plane) * n_planes);
-	for (int i = 0; i < n_planes; i++) {
-		planes[i] = p[i];
-	}
-	
-	std::vector<Triangle> obj = get_mesh_from_file("./assets/sheep.obj", 0.1f, float3(0, 2, 4), Material::glass);
-	n_triangles = obj.size();
-	triangles = (Triangle*)malloc(sizeof(Triangle) * n_triangles);
-	for (int i = 0; i < n_triangles; i++) {
-		triangles[i] = obj[i];
-	}
 
 	
+	triangles = get_mesh_from_file("./assets/cube.obj", 1.0f, float3(0, 2, 4), Material::glass);
 
 	lights.push_back(new PointLight(float3(0,10,0), float3(1,1,1), 30000.0));
 	//lights.push_back(new PointLight(float3(0, 2, -9), float3(1, 1, 1), 1000.0));
@@ -126,13 +110,13 @@ float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 }
 
 void Scene::find_intersection(Ray& r) const {
-	for (int i = 0; i < n_spheres; i++) {
+	for (int i = 0; i < spheres.size(); i++) {
 		spheres[i].intersects(r);
 	}
-	for (int i = 0; i < n_planes; i++) {
+	for (int i = 0; i < planes.size(); i++) {
 		planes[i].intersects(r);
 	}
-	for (int i = 0; i < n_triangles; i++) {
+	for (int i = 0; i < triangles.size(); i++) {
 		triangles[i].intersects(r);
 	}
 }
@@ -157,9 +141,6 @@ float3 Scene::find_direct_light_value(const float3& start_pos, const float3& nor
 
 void Scene::delete_scene()
 {
-	delete[] spheres;
-	delete[] planes;
-	delete[] triangles;
 	for (auto p : lights) {
 		delete p;
 	}

@@ -9,12 +9,9 @@
 
 class Scene
 {
-	int n_planes = 0;
-	Plane* planes;
-	int n_spheres = 0;
-	Sphere* spheres;
-	int n_triangles = 0;
-	Triangle* triangles;
+	std::vector<Plane> planes;
+	std::vector<Sphere> spheres;
+	std::vector<Triangle> triangles;
 
 
 	std::vector<Light*> lights = {};

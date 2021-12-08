@@ -27,31 +27,19 @@ void generate_primary_rays(const float3& camerapos, const float3& camera_directi
 	}
 	up = normalize(up);
 
-	float columns_per_thread = (float)height/(float)nthreads;
-	std::vector<std::thread> t = {};
-	t.reserve(nthreads);
-	for (int i = 0; i < nthreads; i++) {
-		t.push_back(std::thread([i, &columns_per_thread, &width, &height, &rays, &screen_center, &side, &aspect_ratio, &up, &camerapos, &antialiasing] () {
 
-			xorshift_state rand = xorshift_state{(uint)i+1};
+	run_multithreaded(nthreads, width, height, false, [&antialiasing, &width, &height, &up, &side, &screen_center, &aspect_ratio, &camerapos, &rays](int x, int y) {
+		xorshift_state rand = xorshift_state{ (uint)x * y + 1 };
 
-			for (int y = (int)(i*columns_per_thread); y < (float)(i+1) * columns_per_thread; y++) {
-				for (int x = 0; x < width; x++) {
-					for (int n = 0; n < antialiasing; n++) {
-						float px = ((float)x + (float)xorshift32(&rand) / (float)UINT32_MAX) / (float)width;
-						float py = ((float)y + (float)xorshift32(&rand) / (float)UINT32_MAX) / (float)height;
-						float3 dir = screen_center + (side * ((px - 0.5f) * aspect_ratio)) + (up * ((py * -1) + 0.5f));
-						dir = dir - camerapos;
-						dir = normalize(dir);
-						rays[(x + width * y)*antialiasing + n] = Ray(camerapos, dir);
-					}
-				}
-			}
-		}));
-	}
-
-	for (auto& thread : t) {
-		thread.join();
-	}
+		for (int n = 0; n < antialiasing; n++) {
+			float px = ((float)x + (float)xorshift32(&rand) / (float)UINT32_MAX) / (float)width;
+			float py = ((float)y + (float)xorshift32(&rand) / (float)UINT32_MAX) / (float)height;
+			float3 dir = screen_center + (side * ((px - 0.5f) * aspect_ratio)) + (up * ((py * -1) + 0.5f));
+			dir = dir - camerapos;
+			dir = normalize(dir);
+			rays[(x + width * y) * antialiasing + n] = Ray(camerapos, dir);
+		}
+		
+	});
 }
 

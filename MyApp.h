@@ -21,11 +21,12 @@
 - multithreaded rendering
 - anti aliasing
 - obj file loading
+- gamma correction, vignetting and chromatic aberration
 
 todo:
 https://en.wikipedia.org/wiki/Fisheye_lens#Mapping_function
 http://blog.marcinchwedczuk.pl/ray-tracing-torus
-
+clean up code
 */
 
 
@@ -45,6 +46,7 @@ private:
 	ImGuiContext* ctx;
 	int virtual_width;
 	int virtual_height;
+	float3* temp_image; // used for post processing when a temporary image is required
 
 
 	//all imgui settings
@@ -56,10 +58,16 @@ private:
 	float view_height = 3.f;
 	int upscaling = 8;
 	int antialiasing = 1;
+	float gamma_correction = 1.0;
+	float vignetting = 0.0;
+	int chromatic_aberration = 0;
+
+
 
 	void fix_ray_buffer();
 	void set_progression();
 	void trace_rays();
+	void apply_post_processing();
 	void render_pixels();
 
 public:

@@ -37,14 +37,22 @@ void MyApp::Tick( float deltaTime )
 	float time_ray_gen = t.elapsed();
 
 
-	screen->Clear( 0 );
+	
 
 	t.reset();
 	trace_rays();
-	render_pixels();
 	float time_trace = t.elapsed();
-	
-	printf("setup: %f ray: %f trace: %f\n", time_setup, time_ray_gen, time_trace);
+
+	t.reset();
+	apply_post_processing();
+	float post_processing = t.elapsed();
+
+	t.reset();
+	render_pixels();
+	float time_draw = t.elapsed();
+
+
+	printf("setup: %f ray: %f trace: %f post_processing: %f draw: %f\n", time_setup, time_ray_gen, time_trace, post_processing, time_draw);
 	printf("--------------------------\n");
 }
 
@@ -55,6 +63,9 @@ void Tmpl8::MyApp::fix_ray_buffer()
 
 	delete[] pixel_colors;
 	pixel_colors = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
+
+	delete[] temp_image;
+	temp_image = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
 
 	old_width = virtual_width;
 	old_height = virtual_height;
@@ -70,61 +81,90 @@ void Tmpl8::MyApp::set_progression()
 
 void Tmpl8::MyApp::trace_rays()
 {
-	std::vector<std::thread> t = {};
-	t.reserve(nthreads * nthreads);
-	for (int i = 0; i < nthreads*nthreads; i++) {
-		t.push_back(std::thread([i, this]() {
-			//Timer t = Timer();
-
-			for (float y = (float)i / nthreads; y < virtual_height; y += (float)nthreads) {
-				for (float x = (float)(i % nthreads); x < virtual_width; x += (float)nthreads) {
-					float3 accumulated = float3(0, 0, 0);
-					for (int a = 0; a < antialiasing; a++) {
-						Ray r = rays[((int)x + virtual_width * (int)y) * antialiasing + a];
-						accumulated += s.trace_scene(r, bounces);
-					}
-					pixel_colors[(int)x + virtual_width * (int)y] = accumulated/antialiasing;
-				}
+	run_multithreaded(nthreads * nthreads, virtual_width, virtual_height, true, [this](int x, int y) {
+			float3 accumulated = float3(0, 0, 0);
+			for (int a = 0; a < antialiasing; a++) {
+				Ray r = rays[(x + virtual_width * y) * antialiasing + a];
+				accumulated += s.trace_scene(r, bounces);
 			}
-			//printf("ray: %f i: %i\n", t.elapsed(), i);
-			}));
-	}
+			pixel_colors[x + virtual_width * y] = accumulated / antialiasing;
+		});
+}
 
-	for (auto& thread : t) {
-		thread.join();
+void Tmpl8::MyApp::apply_post_processing()
+{
+	run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+		float3 old_color = pixel_colors[x + virtual_width * y];
+		pixel_colors[x + virtual_width * y] = float3(max(min(0.99f, old_color.x), 0.01f), max(min(0.99f, old_color.y), 0.01f), max(min(0.99f, old_color.z), 0.01f));
+		});
+
+	if (vignetting > 0.01) {
+		run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+			float3 old_color = pixel_colors[x + virtual_width * y];
+			float w = (float)virtual_width;
+			float h = (float)virtual_height;
+			float reduction = sqrt(pow((float)x / w - 0.5, 2.0) + pow((float)y / h - 0.5, 2.0)) / 0.7071067811865475244; //maximum distance is exactly 1.0 now
+			reduction = 1.0 - lerp(0.f, 1.f, pow(reduction, 100 - vignetting * 100));
+			pixel_colors[x + virtual_width * y] = float3(max(old_color.x * reduction, 0.f), max(old_color.y * reduction, 0.f), max(old_color.z * reduction, 0.f));
+			});
+	}
+	if (gamma_correction > 1.01 || gamma_correction < 0.99) {
+		run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+			float3 old_color = pixel_colors[x + virtual_width * y];
+			pixel_colors[x + virtual_width * y] = float3(pow(old_color.x, gamma_correction), pow(old_color.y, gamma_correction), pow(old_color.z, gamma_correction));
+			});
+	}
+	if (chromatic_aberration != 0) {
+		run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+			float r;
+			if (x + chromatic_aberration < virtual_width && x + chromatic_aberration >= 0) {
+				r = pixel_colors[x + chromatic_aberration + virtual_width * y].x;
+			}
+			else {
+				r = pixel_colors[x + virtual_width * y].x;
+			}
+			float g = pixel_colors[x + virtual_width * y].y;
+			float b;
+			if (x - chromatic_aberration < virtual_width && x - chromatic_aberration >= 0) {
+				b = pixel_colors[x - chromatic_aberration + virtual_width * y].z;
+			}
+			else {
+				b = pixel_colors[x + virtual_width * y].z;
+			}
+			temp_image[x + virtual_width * y] = float3(r,g,b);
+			});
+		run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+			pixel_colors[x + virtual_width * y] = temp_image[x + virtual_width * y];
+			});
 	}
 }
 
 void Tmpl8::MyApp::render_pixels() {
 	if (upscaling == 1) {
-		for (int y = 0; y < virtual_height; y++) {
-			for (int x = 0; x < virtual_width; x++) {
-				float3 color = pixel_colors[x + screen->width * y];
+		run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+			float3 color = pixel_colors[x + screen->width * y];
 
-				uint red = min((uint)(color.x * 255.0f), 255u);
-				uint green = min((uint)(color.y * 255.0f), 255u);
-				uint blue = min((uint)(color.z * 255.0f), 255u);
+			uint red = min((uint)(color.x * 255.0f), 255u);
+			uint green = min((uint)(color.y * 255.0f), 255u);
+			uint blue = min((uint)(color.z * 255.0f), 255u);
 
-				screen->Plot(x, y, (red << 16) + (green << 8) + blue);
-			}
-		}
+			screen->Plot(x, y, (red << 16) + (green << 8) + blue);
+			});
 	}
 	else {
-		for (int y = 0; y < virtual_height; y++) {
-			for (int x = 0; x < virtual_width; x++) {
-				float3 color = pixel_colors[x + virtual_width * y];
-				for (int y2 = 0; y2 < upscaling; y2++) {
-					for (int x2 = 0; x2 < upscaling; x2++) {
+		run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+			float3 color = pixel_colors[x + virtual_width * y];
+			for (int y2 = 0; y2 < upscaling; y2++) {
+				for (int x2 = 0; x2 < upscaling; x2++) {
 
-						uint red = min((uint)(color.x * 255.0f), 255u);
-						uint green = min((uint)(color.y * 255.0f), 255u);
-						uint blue = min((uint)(color.z * 255.0f), 255u);
+					uint red = min((uint)(color.x * 255.0f), 255u);
+					uint green = min((uint)(color.y * 255.0f), 255u);
+					uint blue = min((uint)(color.z * 255.0f), 255u);
 
-						screen->Plot(x*upscaling+x2, y*upscaling+y2, (red << 16) + (green << 8) + blue);
-					}
+					screen->Plot(x * upscaling + x2, y * upscaling + y2, (red << 16) + (green << 8) + blue);
 				}
 			}
-		}
+			});
 	}
 }
 void Tmpl8::MyApp::PostDraw()
@@ -151,6 +191,9 @@ void Tmpl8::MyApp::PostDraw()
 		virtual_height = screen->height / upscaling;
 		fix_ray_buffer();
 	}
+	ImGui::SliderFloat("gamma correction", &gamma_correction, 0.f, 5.f);
+	ImGui::SliderFloat("vignetting", &vignetting, 0.f, 1.f);
+	ImGui::SliderInt("chromatic aberration", &chromatic_aberration, -10, 10);
 	ImGui::Checkbox("block scene progress", &block_progress);
 	ImGui::Text("last frame time: %f", ImGui::GetIO().DeltaTime);
 	float3 colors = pixel_colors[(int)(mousePos.x / upscaling + (mousePos.y / upscaling) * virtual_width)];

@@ -24,3 +24,29 @@ vector<string> split(const string& s, char delim) {
 
     return result;
 }
+
+void run_multithreaded(int threads, int width, int height, bool reduce_hot_chunks, const std::function<void(int, int)>& f) {
+	std::vector<std::thread> t = {};
+	t.reserve(threads);
+	if (reduce_hot_chunks) {
+		float sqrt_t = (float)sqrt(threads);
+		for (int i = 0; i < threads; i++)
+			t.push_back(std::thread([i, &width, &f, &sqrt_t, &height]() {
+				float x_start = i % (int)sqrt_t;
+				for (float y = (float)i / sqrt_t; y < height; y += sqrt_t)
+					for (float x = x_start; x < width; x += sqrt_t)
+						f(x, y);
+				}));
+	} else {
+		for (int i = 0; i < threads; i++) 
+			t.push_back(std::thread([i, &threads, &height, &width, &f]() {
+				for (int y = i; y < height; y += threads)
+					for (int x = 0; x < width; x++)
+						f(x, y);
+		}));
+	}
+
+	for (auto& thread : t) {
+		thread.join();
+	}
+}

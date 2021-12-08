@@ -17,3 +17,6 @@ enum Primitive {
 	triangle = 2,
 	nothing = 3
 };
+
+
+void run_multithreaded(int threads, int width, int height, bool reduce_hot_chunks, const std::function<void(int, int)>& f);
