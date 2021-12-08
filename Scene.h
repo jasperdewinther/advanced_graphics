@@ -6,6 +6,8 @@
 #include "Sphere.h"
 #include "Plane.h"
 #include "Triangle.h"
+#include "SpotLight.h"
+#include "DirectionalLight.h"
 
 class Scene
 {

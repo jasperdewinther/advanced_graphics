@@ -6,7 +6,8 @@
 
 
 
-/*implemented:
+/*
+implemented:
 - generic ray tracer 
 - free camera in code or along some path at runtime
 - UI using imgui
@@ -20,13 +21,9 @@
 
 - multithreaded rendering
 - anti aliasing
-- obj file loading
+- obj file loading into triangle mesh
 - gamma correction, vignetting and chromatic aberration
-
-todo:
-https://en.wikipedia.org/wiki/Fisheye_lens#Mapping_function
-http://blog.marcinchwedczuk.pl/ray-tracing-torus
-clean up code
+- spot and directional lights
 */
 
 

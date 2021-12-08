@@ -21,7 +21,7 @@
   <PropertyGroup Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -123,6 +123,7 @@
   </ItemDefinitionGroup>
   <!-- END Custom section -->
   <ItemGroup>
+    <ClCompile Include="DirectionalLight.cpp" />
     <ClCompile Include="lib\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="lib\imgui\backends\imgui_impl_opengl3.cpp" />
     <ClCompile Include="lib\imgui\imgui.cpp" />
@@ -139,6 +140,7 @@
     <ClCompile Include="RayHelper.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="Sphere.cpp" />
+    <ClCompile Include="SpotLight.cpp" />
     <ClCompile Include="template\template.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precomp.h</PrecompiledHeaderFile>
@@ -150,6 +152,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cl\tools.cl" />
+    <ClInclude Include="DirectionalLight.h" />
     <ClInclude Include="lib\imgui\backends\imgui_impl_glfw.h" />
     <ClInclude Include="lib\imgui\backends\imgui_impl_opengl3.h" />
     <ClInclude Include="lib\imgui\backends\imgui_impl_opengl3_loader.h" />
@@ -168,6 +171,7 @@
     <ClInclude Include="RayHelper.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="Sphere.h" />
+    <ClInclude Include="SpotLight.h" />
     <ClInclude Include="template\common.h" />
     <ClInclude Include="template\precomp.h" />
     <ClInclude Include="Triangle.h" />

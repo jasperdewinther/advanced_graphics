@@ -17,18 +17,16 @@ Scene::Scene() {
 
 	planes = {
 		Plane(float3(0, 1, 0), 0, Material::checkerboard),
-		Plane(float3(0, -1, 0), 20, Material::white),
-		Plane(float3(1, 0, 0), 20, Material::white),
 		Plane(float3(-1, 0, 0), 20, Material::white),
-		Plane(float3(0, 0, 1), 20, Material::white),
 		Plane(float3(0, 0, -1), 20, Material::white)
 	};
 
 	
-	triangles = get_mesh_from_file("./assets/cube.obj", 1.0f, float3(0, 2, 4), Material::glass);
+	triangles = get_mesh_from_file("./assets/sheep.obj", 0.1f, float3(0, 2, 4), Material::glass);
 
-	lights.push_back(new PointLight(float3(0,10,0), float3(1,1,1), 30000.0));
-	//lights.push_back(new PointLight(float3(0, 2, -9), float3(1, 1, 1), 1000.0));
+	lights.push_back(new PointLight(float3(19,10,19), float3(1,1,1), 50000.0));
+	lights.push_back(new SpotLight(float3(15, 10, 0), float3(0, -1, 0), 0.5f, float3(0.1, 0.5, 0.99), 30000.f));
+	lights.push_back(new DirectionalLight(float3(1,-1, 0.5), float3(0.9,0.9,0.9), 0.7 ));
 }
 
 float3 Scene::trace_scene(Ray& r, int max_bounces) const {
