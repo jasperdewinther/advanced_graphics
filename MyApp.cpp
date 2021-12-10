@@ -4,6 +4,7 @@
 #include <format>
 #include "Sphere.h"
 #include "Plane.h"
+#include "BVH.h"
 
 TheApp* CreateApp() { return new MyApp(); }
 
@@ -17,6 +18,12 @@ void MyApp::Init()
 	ImGui_ImplOpenGL3_Init("#version 130");
 	virtual_width = screen->width / upscaling;
 	virtual_height = screen->height / upscaling;
+
+	printf("ray size: %i\n", sizeof(Ray));
+	printf("ray sphere: %i\n", sizeof(Sphere));
+	printf("ray triangle: %i\n", sizeof(Triangle));
+	printf("ray plane: %i\n", sizeof(Plane));
+	printf("bvh node: %i\n", sizeof(BVHNode));
 }
 
 
@@ -27,33 +34,25 @@ void MyApp::Tick( float deltaTime )
 		fix_ray_buffer();
 	}
 	set_progression();
-	
 	float3 camera_pos = float3(sin(scene_progress * PI*2)*10, view_height, cos(scene_progress * PI*2)*10);
 	float3 camera_dir = normalize(float3(0,2,0) - camera_pos);
-	float time_setup = t.elapsed();
+	time_setup = t.elapsed();
+	
 	t.reset();
-	
 	generate_primary_rays(camera_pos, camera_dir, (float)fov, virtual_width, virtual_height, rays, nthreads, antialiasing);
-	float time_ray_gen = t.elapsed();
-
-
-	
+	time_ray_gen = t.elapsed();
 
 	t.reset();
 	trace_rays();
-	float time_trace = t.elapsed();
+	time_trace = t.elapsed();
 
 	t.reset();
 	apply_post_processing();
-	float post_processing = t.elapsed();
+	post_processing = t.elapsed();
 
 	t.reset();
 	render_pixels();
-	float time_draw = t.elapsed();
-
-
-	printf("setup: %f ray: %f trace: %f post_processing: %f draw: %f\n", time_setup, time_ray_gen, time_trace, post_processing, time_draw);
-	printf("--------------------------\n");
+	time_draw = t.elapsed();
 }
 
 void Tmpl8::MyApp::fix_ray_buffer()
@@ -174,33 +173,26 @@ void Tmpl8::MyApp::PostDraw()
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
-	bool new_multithreading = multithreading;
-	ImGui::Checkbox("Multithreading", &new_multithreading);
-	if (multithreading != new_multithreading) {
-		multithreading = new_multithreading;
-		nthreads = multithreading ? (int)std::thread::hardware_concurrency() : 1;
-	}
+	if (ImGui::Checkbox("Multithreading", &multithreading)) nthreads = multithreading ? (int)std::thread::hardware_concurrency() : 1;
 	ImGui::Text("number of threads used: %i", nthreads);
-
 	ImGui::SliderInt("bounces", &bounces, 0, 20);
 	ImGui::SliderFloat("scene progress", &scene_progress, 0.f, 1.f);
 	ImGui::SliderInt("fov", &fov, 0, 180);
 	ImGui::SliderFloat("view height", &view_height, 0.1f, 19.9f);
-	if (ImGui::SliderInt("upscaling", &upscaling, 1, 8)) {
-		virtual_width = screen->width / upscaling;
-		virtual_height = screen->height / upscaling;
-		fix_ray_buffer();
-	}
+	if (ImGui::SliderInt("upscaling", &upscaling, 1, 8)) {virtual_width = screen->width / upscaling; virtual_height = screen->height / upscaling; fix_ray_buffer();}
 	ImGui::SliderFloat("gamma correction", &gamma_correction, 0.f, 5.f);
 	ImGui::SliderFloat("vignetting", &vignetting, 0.f, 1.f);
 	ImGui::SliderInt("chromatic aberration", &chromatic_aberration, -10, 10);
+	if (ImGui::SliderInt("Anti aliasing", &antialiasing, 1, 8)) fix_ray_buffer();
 	ImGui::Checkbox("block scene progress", &block_progress);
 	ImGui::Text("last frame time: %f", ImGui::GetIO().DeltaTime);
 	float3 colors = pixel_colors[(int)(mousePos.x / upscaling + (mousePos.y / upscaling) * virtual_width)];
 	ImGui::Text("cursor color: %f %f %f",colors.x, colors.y, colors.z);
-	if (ImGui::SliderInt("Anti aliasing", &antialiasing, 1, 8)) {
-		fix_ray_buffer();
-	}
+	ImGui::Text("setup: %f", time_setup);
+	ImGui::Text("ray gen: %f", time_ray_gen);
+	ImGui::Text("trace: %f", time_trace);
+	ImGui::Text("post_processing: %f", post_processing);
+	ImGui::Text("draw: %f", time_draw);
 
 	ImGui::End();
 	ImGui::Render();

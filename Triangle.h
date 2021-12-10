@@ -4,11 +4,11 @@
 
 class Triangle
 {
+public:
 	float3 p0;
 	float3 p1;
 	float3 p2;
 	float3 normal;
-public:
 	Material m;
 	Triangle(float3 p0, float3 p1, float3 p2, float3 normal, Material material);
 	void intersects(Ray& ray) const;

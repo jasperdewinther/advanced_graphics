@@ -4,9 +4,22 @@
 Ray::Ray(float3 origin, float3 direction):
 	o(origin),
 	d(direction),
+	invDir(1/direction),
 	t(std::numeric_limits<float>::max()),
 	hitptr(nullptr)
 {}
+
+float2 Ray::intersects_aabb(const aabb & box)
+{
+	//https://gist.github.com/DomNomNom/46bb1ce47f68d255fd5d
+	float3 tMin = (box.bmin3 - o) * invDir;
+	float3 tMax = (box.bmax3 - o) * invDir;
+	float3 t1 = min(tMin, tMax);
+	float3 t2 = max(tMin, tMax);
+	float tNear = max(max(t1.x, t1.y), t1.z);
+	float tFar = min(min(t2.x, t2.y), t2.z);
+	return float2(tNear, tFar);
+}
 
 
 void generate_primary_rays(const float3& camerapos, const float3& camera_direction, float fov, int width, int height, Ray* rays, int nthreads, int antialiasing) {

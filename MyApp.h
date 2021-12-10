@@ -45,6 +45,8 @@ private:
 	int virtual_height;
 	float3* temp_image; // used for post processing when a temporary image is required
 
+	float time_setup, time_ray_gen, time_trace, post_processing, time_draw; //performance timers
+
 
 	//all imgui settings
 	bool multithreading = true;
