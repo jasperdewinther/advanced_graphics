@@ -123,6 +123,7 @@
   </ItemDefinitionGroup>
   <!-- END Custom section -->
   <ItemGroup>
+    <ClCompile Include="BVH.cpp" />
     <ClCompile Include="DirectionalLight.cpp" />
     <ClCompile Include="lib\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="lib\imgui\backends\imgui_impl_opengl3.cpp" />
@@ -151,6 +152,7 @@
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BVH.h" />
     <ClInclude Include="cl\tools.cl" />
     <ClInclude Include="DirectionalLight.h" />
     <ClInclude Include="lib\imgui\backends\imgui_impl_glfw.h" />

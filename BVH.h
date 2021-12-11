@@ -18,6 +18,7 @@ public:
 	BVH(const std::vector<Triangle>& triangles, bool use_SAH);
 	void subdivide(BVHNode* parent, uint poolPtr);
 	void intersect(Ray& r);
+	void partition()
 };
 
 aabb CalculateBounds(const std::vector<Triangle>& triangles, uint first, uint amount);

@@ -52,6 +52,9 @@
     <ClCompile Include="DirectionalLight.cpp">
       <Filter>lights</Filter>
     </ClCompile>
+    <ClCompile Include="BVH.cpp">
+      <Filter>geometry</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="template\common.h">
@@ -116,6 +119,9 @@
     </ClInclude>
     <ClInclude Include="DirectionalLight.h">
       <Filter>lights</Filter>
+    </ClInclude>
+    <ClInclude Include="BVH.h">
+      <Filter>geometry</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
