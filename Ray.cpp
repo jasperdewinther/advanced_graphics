@@ -14,8 +14,8 @@ float2 Ray::intersects_aabb(const aabb & box)
 	//https://gist.github.com/DomNomNom/46bb1ce47f68d255fd5d
 	float3 tMin = (box.bmin3 - o) * invDir;
 	float3 tMax = (box.bmax3 - o) * invDir;
-	float3 t1 = min(tMin, tMax);
-	float3 t2 = max(tMin, tMax);
+	float3 t1 = float3(min(tMin.x, tMax.x), min(tMin.y, tMax.y), min(tMin.z, tMax.z));
+	float3 t2 = float3(max(tMin.x, tMax.x), max(tMin.y, tMax.y), max(tMin.z, tMax.z));
 	float tNear = max(max(t1.x, t1.y), t1.z);
 	float tFar = min(min(t2.x, t2.y), t2.z);
 	return float2(tNear, tFar);

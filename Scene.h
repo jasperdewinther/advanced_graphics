@@ -8,12 +8,14 @@
 #include "Triangle.h"
 #include "SpotLight.h"
 #include "DirectionalLight.h"
+#include "BVH.h"
 
 class Scene
 {
 	std::vector<Plane> planes;
 	std::vector<Sphere> spheres;
 	std::vector<Triangle> triangles;
+	std::vector<BVH> bvhs;
 
 
 	std::vector<Light*> lights = {};

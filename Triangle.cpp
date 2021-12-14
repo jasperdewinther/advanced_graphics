@@ -42,6 +42,11 @@ float3 Triangle::get_normal() const
 	return normal;
 }
 
+float3 Triangle::get_centre() const
+{
+    return float3((p1.x+p1.x+p2.x)/3.0, (p1.y + p1.y + p2.y) / 3.0, (p1.z + p1.z + p2.z) / 3.0);
+}
+
 
 std::vector<Triangle> get_mesh_from_file(const std::string& filename, float scalefactor, float3 position, Material material){
     //assumes normals of all vertices belonging to one triangle are the same 
@@ -93,9 +98,9 @@ std::vector<Triangle> get_mesh_from_file(const std::string& filename, float scal
             bool failed = false;
             if (std::stol(part0[2]) - 1 < normals.size()) n0 = normals[std::stol(part0[2]) - 1];
             else failed = true;
-            if (std::stol(part1[2]) - 1 < normals.size()) n0 = normals[std::stol(part1[2]) - 1];
+            if (std::stol(part1[2]) - 1 < normals.size()) n1 = normals[std::stol(part1[2]) - 1];
             else failed = true;
-            if (std::stol(part2[2]) - 1 < normals.size()) n0 = normals[std::stol(part2[2]) - 1];
+            if (std::stol(part2[2]) - 1 < normals.size()) n2 = normals[std::stol(part2[2]) - 1];
             else failed = true;
             float3 n = failed ? normalize(cross(p2 - p1, p0 - p1)) : normalize(float3((n0.x + n1.x + n2.x) / 3.f, (n0.y + n1.y + n2.y) / 3.f, (n0.z + n1.z + n2.z) / 3.f));
             triangles.push_back(Triangle(p0, p1, p2, n, material));

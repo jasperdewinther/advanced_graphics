@@ -24,6 +24,7 @@ void MyApp::Init()
 	printf("ray triangle: %i\n", sizeof(Triangle));
 	printf("ray plane: %i\n", sizeof(Plane));
 	printf("bvh node: %i\n", sizeof(BVHNode));
+	printf("aabb: %i\n", sizeof(aabb));
 }
 
 

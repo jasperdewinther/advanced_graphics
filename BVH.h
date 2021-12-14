@@ -13,12 +13,15 @@ class BVH
 {
 	uint* indices;
 	BVHNode* pool;
-	const std::vector<Triangle>& primitives;
+	std::vector<Triangle> primitives;
 public:
-	BVH(const std::vector<Triangle>& triangles, bool use_SAH);
-	void subdivide(BVHNode* parent, uint poolPtr);
-	void intersect(Ray& r);
-	void partition()
+	BVH(std::vector<Triangle> triangles, bool use_SAH);
+	~BVH();
+	void intersects(Ray& r) const;
+private:
+	void subdivide(BVHNode* parent, uint& poolPtr, uint indices_start);
+	int partition(const aabb& bb, uint start, uint count);
+	void intersect_internal(Ray& r, int node_index = 0) const;
 };
 
 aabb CalculateBounds(const std::vector<Triangle>& triangles, uint first, uint amount);

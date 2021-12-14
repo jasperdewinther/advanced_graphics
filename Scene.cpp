@@ -21,8 +21,12 @@ Scene::Scene() {
 		Plane(float3(0, 0, -1), 20, Material::white)
 	};
 
+	triangles = get_mesh_from_file("./assets/sheep.obj", 1.f, float3(0, 2, 4), Material::red_glass);
 	
-	triangles = get_mesh_from_file("./assets/cube.obj", 1.f, float3(0, 2, 4), Material::red_glass);
+	bvhs = {
+		BVH(triangles, false)
+	};
+
 
 	lights.push_back(new PointLight(float3(19,10,19), float3(1,1,1), 50000.0));
 	lights.push_back(new SpotLight(float3(15, 10, 0), float3(0, -1, 0), 0.5f, float3(0.1, 0.5, 0.99), 30000.f));
@@ -114,8 +118,8 @@ void Scene::find_intersection(Ray& r) const {
 	for (int i = 0; i < planes.size(); i++) {
 		planes[i].intersects(r);
 	}
-	for (int i = 0; i < triangles.size(); i++) {
-		triangles[i].intersects(r);
+	for (int i = 0; i < bvhs.size(); i++) {
+		bvhs[i].intersects(r);
 	}
 }
 
