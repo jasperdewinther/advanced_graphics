@@ -42,7 +42,7 @@ float3 Triangle::get_normal() const
 	return normal;
 }
 
-float3 Triangle::get_centre() const
+float3 Triangle::get_center() const
 {
     return float3((p1.x+p1.x+p2.x)/3.0, (p1.y + p1.y + p2.y) / 3.0, (p1.z + p1.z + p2.z) / 3.0);
 }

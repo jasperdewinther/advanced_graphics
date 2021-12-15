@@ -17,6 +17,10 @@ BVH::BVH(std::vector<Triangle> vertices, bool use_SAH):
 	root->leftFirst = 0;
 	root->count = N;
 	subdivide(root, poolPtr, 0);
+	for (int i = 0; i < N; i++) printf("%i ", indices[i]);
+	printf("\n");
+	for (int i = 0; i < N*2-1; i++) printf("(%i %i)", pool[i].leftFirst, pool[i].count);
+	printf("\n");
 }
 
 BVH::~BVH()
@@ -27,6 +31,7 @@ BVH::~BVH()
 
 
 void BVH::subdivide(BVHNode* parent, uint& poolPtr, uint indices_start) {
+	printf("parent: %i poolPtr: %i indices_start: %i count: %i\n", (int)parent, poolPtr, indices_start, parent->count);
 	parent->bounds = CalculateBounds(primitives, indices_start, parent->count);
 	if (parent->count <= 3) return; //todo replace with something better like sah
 	parent->leftFirst = poolPtr;
@@ -37,7 +42,7 @@ void BVH::subdivide(BVHNode* parent, uint& poolPtr, uint indices_start) {
 	left->count = pivot;
 	right->count = parent->count - pivot;
 	subdivide(left, poolPtr, indices_start);
-	subdivide(right, poolPtr, pivot);
+	subdivide(right, poolPtr, indices_start+pivot);
 	parent->count = 0;
 
 }
@@ -61,7 +66,7 @@ int BVH::partition(const aabb& bb, uint start, uint count)
 	int i = start;
 	if (split_axis == 0) {
 		for (; i < end-1; i++) {
-			if (primitives[indices[i]].get_centre().x > pos) { //we have to swap
+			if (primitives[indices[i]].get_center().x > pos) { //we have to swap
 				std::swap(indices[i], indices[end]);
 				end--;
 			}
@@ -69,7 +74,7 @@ int BVH::partition(const aabb& bb, uint start, uint count)
 	}
 	else if (split_axis == 1) {
 		for (; i < end-1; i++) {
-			if (primitives[indices[i]].get_centre().y > pos) { //we have to swap
+			if (primitives[indices[i]].get_center().y > pos) { //we have to swap
 				std::swap(indices[i], indices[end]);
 				end--;
 			}
@@ -77,7 +82,7 @@ int BVH::partition(const aabb& bb, uint start, uint count)
 	}
 	else {
 		for (; i < end-1; i++) {
-			if (primitives[indices[i]].get_centre().z > pos) { //we have to swap
+			if (primitives[indices[i]].get_center().z > pos) { //we have to swap
 				std::swap(indices[i], indices[end]);
 				end--;
 			}

@@ -21,7 +21,7 @@ Scene::Scene() {
 		Plane(float3(0, 0, -1), 20, Material::white)
 	};
 
-	triangles = get_mesh_from_file("./assets/sheep.obj", 1.f, float3(0, 2, 4), Material::red_glass);
+	triangles = get_mesh_from_file("./assets/cube.obj", 1.f, float3(0, 2, 4), Material::red_glass);
 	
 	bvhs = {
 		BVH(triangles, false)
