@@ -7,10 +7,10 @@ BVH::BVH(std::vector<Triangle> vertices, bool use_SAH):
 	//from slides
 	// create index array
 	int N = (int)primitives.size();
-	indices = new uint[N];
+	indices = std::make_unique<uint[]>(N);
 	for (int i = 0; i < N; i++) indices[i] = i;
 	// allocate BVH root node
-	pool = new BVHNode[N*2-1];
+	pool = std::make_unique<BVHNode[]>(N*2-1);
 	BVHNode* root = &pool[0];
 	uint poolPtr = 2;
 	// subdivide root node
@@ -18,12 +18,6 @@ BVH::BVH(std::vector<Triangle> vertices, bool use_SAH):
 	root->count = N;
 	root->bounds = CalculateBounds(primitives, 0, N);
 	subdivide(root, poolPtr, 0);
-}
-
-BVH::~BVH()
-{
-	//delete[] indices;
-	//delete[] pool;
 }
 
 void BVH::print_details() const

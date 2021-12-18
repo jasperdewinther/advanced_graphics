@@ -12,11 +12,13 @@ struct BVHNode {
 class BVH
 {
 public:
-	uint* indices;
-	BVHNode* pool;
+	std::unique_ptr<uint[]> indices;
+	std::unique_ptr<BVHNode[]> pool;
 	std::vector<Triangle> primitives;
+
 	BVH(std::vector<Triangle> triangles, bool use_SAH);
-	~BVH();
+
+
 	void intersects(Ray& r) const;
 	void print_details() const;
 private:

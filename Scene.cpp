@@ -19,18 +19,17 @@ Scene::Scene() :
 		Plane(float3(0, 0, -1), 20, Material::white)
 		}),
 	triangles(
-		get_mesh_from_file("./assets/sheep.obj", 0.1f, float3(0, 2, 4), Material::red_glass)
+		get_mesh_from_file("./assets/cube.obj", 1.f, float3(0, 2, 4), Material::red_glass)
 	),
-	bvhs({ 
-		BVH(triangles, false) 
-		}),
+
 	lights({
 		new PointLight(float3(19,10,19), float3(1,1,1), 50000.0),
 		new SpotLight(float3(15, 10, 0), float3(0, -1, 0), 0.5f, float3(0.1, 0.5, 0.99), 30000.f),
 		new DirectionalLight(float3(1,-1, 0.5), float3(0.9,0.9,0.9), 0.7)
 		})
 {
-	//bvhs[0].print_details();
+	bvhs.emplace_back(triangles, false);
+	bvhs[0].print_details();
 }
 
 float3 Scene::trace_scene(Ray& r, int max_bounces) const {

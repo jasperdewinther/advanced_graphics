@@ -13,13 +13,14 @@
 class Scene
 {
 public:
-	const std::vector<Plane> planes;
-	const std::vector<Sphere> spheres;
-	const std::vector<Triangle> triangles;
-	const std::vector<BVH> bvhs;
+	std::vector<Plane> planes;
+	std::vector<Sphere> spheres;
+	std::vector<Triangle> triangles;
+	std::vector<BVH> bvhs;
 
 
 	const std::vector<Light*> lights = {};
+	Scene(const Scene&) = delete;
 	Scene();
 	float3 trace_scene(Ray& r, int max_bounces) const;
 	void find_intersection(Ray& r) const;
