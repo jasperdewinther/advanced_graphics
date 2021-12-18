@@ -11,13 +11,14 @@ struct BVHNode {
 
 class BVH
 {
+public:
 	uint* indices;
 	BVHNode* pool;
 	std::vector<Triangle> primitives;
-public:
 	BVH(std::vector<Triangle> triangles, bool use_SAH);
 	~BVH();
 	void intersects(Ray& r) const;
+	void print_details() const;
 private:
 	void subdivide(BVHNode* parent, uint& poolPtr, uint indices_start);
 	int partition(const aabb& bb, uint start, uint count);

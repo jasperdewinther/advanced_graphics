@@ -174,6 +174,7 @@ void Tmpl8::MyApp::PostDraw()
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
+	ImGui::Begin("settings");
 	if (ImGui::Checkbox("Multithreading", &multithreading)) nthreads = multithreading ? (int)std::thread::hardware_concurrency() : 1;
 	ImGui::Text("number of threads used: %i", nthreads);
 	ImGui::SliderInt("bounces", &bounces, 0, 20);

@@ -16,33 +16,52 @@ BVH::BVH(std::vector<Triangle> vertices, bool use_SAH):
 	// subdivide root node
 	root->leftFirst = 0;
 	root->count = N;
+	root->bounds = CalculateBounds(primitives, 0, N);
 	subdivide(root, poolPtr, 0);
-	for (int i = 0; i < N; i++) printf("%i ", indices[i]);
-	printf("\n");
-	for (int i = 0; i < N*2-1; i++) printf("(%i %i)", pool[i].leftFirst, pool[i].count);
-	printf("\n");
 }
 
 BVH::~BVH()
 {
-	delete[] indices;
-	delete[] pool;
+	//delete[] indices;
+	//delete[] pool;
+}
+
+void BVH::print_details() const
+{
+	for (int i = 0; i < primitives.size(); i++) printf("vertice: %f %f %f\n", primitives[i].get_center().x, primitives[i].get_center().y, primitives[i].get_center().z);
+	for (int i = 0; i < primitives.size(); i++) printf("%i ", indices[i]);
+	printf("\n");
+	for (int i = 0; i < primitives.size() * 2 - 1; i++) printf("index: %i leftFirst: %i count: %i min: %f %f %f max: %f %f %f\n",
+		i,
+		pool[i].leftFirst,
+		pool[i].count,
+		pool[i].bounds.bmin3.x,
+		pool[i].bounds.bmin3.y,
+		pool[i].bounds.bmin3.z,
+		pool[i].bounds.bmax3.x,
+		pool[i].bounds.bmax3.y,
+		pool[i].bounds.bmax3.z);
+	printf("\n");
 }
 
 
 void BVH::subdivide(BVHNode* parent, uint& poolPtr, uint indices_start) {
-	printf("parent: %i poolPtr: %i indices_start: %i count: %i\n", (int)parent, poolPtr, indices_start, parent->count);
-	parent->bounds = CalculateBounds(primitives, indices_start, parent->count);
-	if (parent->count <= 3) return; //todo replace with something better like sah
+	//printf("parent: %i poolPtr: %i indices_start: %i count: %i\n", ((int)parent - (int)&pool[0])/sizeof(&pool[0]), poolPtr, indices_start, parent->count);
+	//printf("bounds calc min: %f %f %f max: %f %f %f\n", parent->bounds.bmin.x, parent->bounds.bmin.y, parent->bounds.bmin.z, parent->bounds.bmax.x, parent->bounds.bmax.y, parent->bounds.bmax.z);
+	if (parent->count <= 3) { parent->leftFirst = indices_start;  return; } //todo replace with something better like sah
 	parent->leftFirst = poolPtr;
 	BVHNode* left = &pool[poolPtr++];
 	BVHNode* right = &pool[poolPtr++];
 	//set left and right count and left
 	int pivot = partition(parent->bounds, indices_start, parent->count);
-	left->count = pivot;
-	right->count = parent->count - pivot;
+	left->count = pivot - indices_start;
+	left->bounds = CalculateBounds(primitives, indices_start, left->count);
+	right->count = parent->count - left->count;
+	right->bounds = CalculateBounds(primitives, pivot, right->count);
+
+
 	subdivide(left, poolPtr, indices_start);
-	subdivide(right, poolPtr, indices_start+pivot);
+	subdivide(right, poolPtr, pivot);
 	parent->count = 0;
 
 }
@@ -55,14 +74,14 @@ int BVH::partition(const aabb& bb, uint start, uint count)
 	int split_axis; //index of axis which is split
 	float pos; //location of pivot
 	if (diff.x > diff.y) {
-		if (diff.x > diff.z) { split_axis = 0;pos = bb.bmin3.x + diff.x;}
-		else { split_axis = 2;pos = bb.bmin3.z + diff.z;}
+		if (diff.x > diff.z) { split_axis = 0;pos = bb.bmin3.x + (diff.x/2.f);}
+		else { split_axis = 2;pos = bb.bmin3.z + (diff.z/2.f);}
 	}
 	else {
-		if (diff.y > diff.z) { split_axis = 1;pos = bb.bmin3.y + diff.y;}
-		else { split_axis = 2;pos = bb.bmin3.z + diff.z;}
+		if (diff.y > diff.z) { split_axis = 1;pos = bb.bmin3.y + (diff.y/2.f);}
+		else { split_axis = 2;pos = bb.bmin3.z + (diff.z/2.f);}
 	}
-	int end = start + count - 1;
+	int end = start + count-1;
 	int i = start;
 	if (split_axis == 0) {
 		for (; i < end-1; i++) {
@@ -116,6 +135,7 @@ aabb CalculateBounds(const std::vector<Triangle>& triangles, uint first, uint am
 		maxp.y = max(triangles[i].p2.y, maxp.y);
 		maxp.z = max(triangles[i].p2.z, maxp.z);
 	}
+
 	return aabb(minp, maxp);
 }
 
@@ -134,10 +154,11 @@ void BVH::intersects(Ray& r) const{
 	{
 		float2 result_left = r.intersects_aabb(pool[n->leftFirst].bounds);
 		float2 result_right = r.intersects_aabb(pool[n->leftFirst + 1].bounds);
-		if (result_left.x > result_left.y) intersect_internal(r, n->leftFirst);
-		if (result_right.x > result_right.y) intersect_internal(r, n->leftFirst + 1);
+		if (result_left.x < result_left.y) intersect_internal(r, n->leftFirst);
+		if (result_right.x < result_right.y) intersect_internal(r, n->leftFirst + 1);
 	}
 }
+
 void BVH::intersect_internal(Ray& r, int node_index) const { //assumes ray intersects
 	BVHNode* n = &pool[node_index];
 	if (n->count) {
@@ -149,7 +170,7 @@ void BVH::intersect_internal(Ray& r, int node_index) const { //assumes ray inter
 	{
 		float2 result_left = r.intersects_aabb(pool[n->leftFirst].bounds);
 		float2 result_right = r.intersects_aabb(pool[n->leftFirst+1].bounds);
-		if (result_left.x <= result_left.y) intersect_internal(r, n->leftFirst);
-		if (result_right.x <= result_right.y) intersect_internal(r, n->leftFirst+1);
+		if (result_left.x < result_left.y) intersect_internal(r, n->leftFirst);
+		if (result_right.x < result_right.y) intersect_internal(r, n->leftFirst+1);
 	}
 }
