@@ -19,12 +19,14 @@ public:
 
 	BVH(std::vector<Triangle> triangles, bool use_SAH);
 
-
 	void intersects(Ray& r) const;
 	void print_details() const;
+	void write_to_dot_file(std::string filename);
 private:
-	void subdivide(BVHNode* parent, uint& poolPtr, uint indices_start);
-	int partition(const AABB& bb, uint start, uint count);
+	int count_depth(BVHNode* parent) const;
+	void subdivide(BVHNode* parent, uint& poolPtr, uint indices_start, bool use_SAH);
+	int partition(const AABB& bb, uint start, uint count, bool use_SAH);
+	int partition_shuffle(int axis, float pos, uint start, uint count);
 	void intersect_internal(Ray& r, int node_index = 0) const;
 	AABB CalculateBounds(uint first, uint amount) const;
 };

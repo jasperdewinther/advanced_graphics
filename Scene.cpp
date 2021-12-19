@@ -19,7 +19,7 @@ Scene::Scene() :
 		Plane(float3(0, 0, -1), 20, Material::white)
 		}),
 	triangles(
-		get_mesh_from_file("./assets/teapot.obj", 1.f, float3(0, 2, 4), Material::red_glass)
+		get_mesh_from_file("./assets/bunny.obj", 1.f, float3(0, 2, 4), Material::normal)
 	),
 
 	lights({
@@ -28,8 +28,9 @@ Scene::Scene() :
 		new DirectionalLight(float3(1,-1, 0.5), float3(0.9,0.9,0.9), 0.7)
 		})
 {
-	bvhs.emplace_back(triangles, false);
-	bvhs[0].print_details();
+	bvhs.emplace_back(triangles, true);
+	//bvhs[0].print_details();
+	//bvhs[0].write_to_dot_file("d.txt");
 }
 
 float3 Scene::trace_scene(Ray& r, int max_bounces) const {

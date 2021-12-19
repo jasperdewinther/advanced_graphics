@@ -19,7 +19,7 @@ BVH::BVH(std::vector<Triangle> vertices, bool use_SAH):
 	root->leftFirst = 0;
 	root->count = N;
 	root->bounds = CalculateBounds(0, N);
-	subdivide(root, poolPtr, 0);
+	subdivide(root, poolPtr, 0, use_SAH);
 }
 
 void BVH::print_details() const
@@ -38,40 +38,53 @@ void BVH::print_details() const
 		pool[i].bounds.maxy,
 		pool[i].bounds.maxz);
 	printf("\n");
+	
+	printf("%i vertices\n", primitives.size());
+
+	printf("max depth: %i\n", count_depth(&pool[0]));
+}
+
+int BVH::count_depth(BVHNode* parent) const {
+	return parent->count == 0 ? max(count_depth(&pool[parent->leftFirst]), count_depth(&pool[parent->leftFirst + 1])) + 1 : 1;
+}
+
+void BVH::write_to_dot_file(std::string filename)
+{
+	FILE* fptr = fopen(filename.c_str(), "w");
 	for (int i = 0; i < primitives.size() * 2 - 1; i++) {
 		if (pool[i].count == 0) {
-			printf("\tN_%i_%i -> N_%i_%i\n",
-				i, 
+			fprintf(fptr,"\tN_%i_%i -> N_%i_%i\n",
+				i,
 				pool[i].count,
 				pool[i].leftFirst,
 				pool[pool[i].leftFirst].count);
-			printf("\tN_%i_%i -> N_%i_%i\n",
+			fprintf(fptr,"\tN_%i_%i -> N_%i_%i\n",
 				i,
 				pool[i].count,
-				pool[i].leftFirst+1,
-				pool[pool[i].leftFirst+1].count);
+				pool[i].leftFirst + 1,
+				pool[pool[i].leftFirst + 1].count);
 		}
 		else {
 			for (int j = pool[i].leftFirst; j < pool[i].leftFirst + pool[i].count; j++) {
-				printf("\tN_%i_%i -> V_%i_%i_%i\n",
-					i, 
+				fprintf(fptr, "\tN_%i_%i -> V_%i_%i_%i\n",
+					i,
 					pool[i].count,
-					(int)(primitives[indices[j]].get_center().x*1000.f+1000.f),
-					(int)(primitives[indices[j]].get_center().y*1000.f+1000.f),
-					(int)(primitives[indices[j]].get_center().z*1000.f+1000.f));
+					(int)(primitives[indices[j]].get_center().x * 1000.f + 1000.f),
+					(int)(primitives[indices[j]].get_center().y * 1000.f + 1000.f),
+					(int)(primitives[indices[j]].get_center().z * 1000.f + 1000.f));
 			}
 		}
 	}
-	for (int i = 0; i < primitives.size(); i++) 
-		printf("\tV_%i_%i_%i\n", 
-			(int)(primitives[i].get_center().x*1000.f+1000.f), 
-			(int)(primitives[i].get_center().y*1000.f+1000.f), 
-			(int)(primitives[i].get_center().z*1000.f+1000.f));
-	printf("%i vertices\n", primitives.size());
+	for (int i = 0; i < primitives.size(); i++)
+		fprintf(fptr, "\tV_%i_%i_%i\n",
+			(int)(primitives[i].get_center().x * 1000.f + 1000.f),
+			(int)(primitives[i].get_center().y * 1000.f + 1000.f),
+			(int)(primitives[i].get_center().z * 1000.f + 1000.f));
+	fclose(fptr);
 }
 
 
-void BVH::subdivide(BVHNode* parent, uint& poolPtr, uint indices_start) {
+void BVH::subdivide(BVHNode* parent, uint& poolPtr, uint indices_start, bool use_SAH) {
 	//printf("parent: %i poolPtr: %i indices_start: %i count: %i\n", ((int)parent - (int)&pool[0])/sizeof(&pool[0]), poolPtr, indices_start, parent->count);
 	//printf("bounds calc min: %f %f %f max: %f %f %f\n", parent->bounds.bmin.x, parent->bounds.bmin.y, parent->bounds.bmin.z, parent->bounds.bmax.x, parent->bounds.bmax.y, parent->bounds.bmax.z);
 	if (parent->count <= 3) { parent->leftFirst = indices_start;  return; } //todo replace with something better like sah
@@ -79,38 +92,80 @@ void BVH::subdivide(BVHNode* parent, uint& poolPtr, uint indices_start) {
 	BVHNode* left = &pool[poolPtr++];
 	BVHNode* right = &pool[poolPtr++];
 	//set left and right count and left
-	int pivot = partition(parent->bounds, indices_start, parent->count);
+	int pivot = partition(parent->bounds, indices_start, parent->count, use_SAH);
 	left->count = pivot - indices_start;
 	left->bounds = CalculateBounds(indices_start, left->count);
 	right->count = parent->count - left->count;
 	right->bounds = CalculateBounds(pivot, right->count);
 
-	subdivide(left, poolPtr, indices_start);
-	subdivide(right, poolPtr, pivot);
+	subdivide(left, poolPtr, indices_start, use_SAH);
+	subdivide(right, poolPtr, pivot, use_SAH);
 	parent->count = 0;
 
 }
 
-int BVH::partition(const AABB& bb, uint start, uint count)
+int BVH::partition(const AABB& bb, uint start, uint count, bool use_SAH)
 {
-	//use bounds to calculate split axis
-	//then partition indices
-	float diffx = bb.maxx - bb.minx;
-	float diffy = bb.maxy - bb.miny;
-	float diffz = bb.maxz - bb.minz;
-	int split_axis; //index of axis which is split
-	float pos; //location of pivot
-	if (diffx > diffy) {
-		if (diffx > diffz) { split_axis = 0;pos = bb.minx + (diffx/2.f);}
-		else { split_axis = 2;pos = bb.minz + (diffz/2.f);}
+	if (use_SAH) {
+		const int BINS = 8;
+		int optimal_axis = 0;
+		int optimal_pos = 0;
+		float optimal_cost = std::numeric_limits<float>::max();
+		for (int axis = 0; axis < 3; axis++) {
+			for (int b = 0; b < BINS; b++) {
+				int end = start + count - 1;
+				int i = start;
+				float pos;
+				if (axis == 0) pos = lerp(bb.minx, bb.maxx, (float)b / (float)BINS);
+				if (axis == 1) pos = lerp(bb.miny, bb.maxy, (float)b / (float)BINS);
+				if (axis == 2) pos = lerp(bb.minz, bb.maxz, (float)b / (float)BINS);
+				int pivot = partition_shuffle(axis, pos, start, count);
+
+				int bb1_count = pivot - start;
+				int bb2_count = count - bb1_count;
+
+				AABB bb1 = CalculateBounds(start, bb1_count);
+				AABB bb2 = CalculateBounds(pivot, bb2_count);
+
+				float half_area1 = (bb1.maxx - bb1.minx) * (bb1.maxy - bb1.miny) + (bb1.maxx - bb1.minx) * (bb1.maxz - bb1.minz) + (bb1.maxy - bb1.miny) * (bb1.maxz - bb1.minz);
+				float half_area2 = (bb2.maxx - bb2.minx) * (bb2.maxy - bb2.miny) + (bb2.maxx - bb2.minx) * (bb2.maxz - bb2.minz) + (bb2.maxy - bb2.miny) * (bb2.maxz - bb2.minz);
+				float cost = half_area1 * bb1_count + half_area2 * bb2_count;
+				if (cost < optimal_cost) {
+					optimal_axis = axis;
+					optimal_pos = pos;
+					optimal_cost = cost;
+				}
+			}
+		}
+
+
+
+		return partition_shuffle(optimal_axis, optimal_pos, start, count);
 	}
 	else {
-		if (diffy > diffz) { split_axis = 1;pos = bb.miny + (diffy/2.f);}
-		else { split_axis = 2;pos = bb.minz + (diffz/2.f);}
+		//use bounds to calculate split axis
+		//then partition indices
+		float diffx = bb.maxx - bb.minx;
+		float diffy = bb.maxy - bb.miny;
+		float diffz = bb.maxz - bb.minz;
+		int split_axis; //index of axis which is split
+		float pos; //location of pivot
+		if (diffx > diffy) {
+			if (diffx > diffz) { split_axis = 0; pos = bb.minx + (diffx / 2.f); }
+			else { split_axis = 2; pos = bb.minz + (diffz / 2.f); }
+		}
+		else {
+			if (diffy > diffz) { split_axis = 1; pos = bb.miny + (diffy / 2.f); }
+			else { split_axis = 2; pos = bb.minz + (diffz / 2.f); }
+		}
+		return partition_shuffle(split_axis, pos, start, count);
 	}
-	int end = start + count-1;
+}
+
+int BVH::partition_shuffle(int axis, float pos, uint start, uint count) {
+	int end = start + count - 1;
 	int i = start;
-	if (split_axis == 0) {
+	if (axis == 0) {
 		for (; i < end; i++) {
 			if (centers[indices[i]].x > pos) { //we have to swap
 				std::swap(indices[i], indices[end]);
@@ -118,7 +173,7 @@ int BVH::partition(const AABB& bb, uint start, uint count)
 			}
 		}
 	}
-	else if (split_axis == 1) {
+	else if (axis == 1) {
 		for (; i < end; i++) {
 			if (centers[indices[i]].y > pos) { //we have to swap
 				std::swap(indices[i], indices[end]);
