@@ -55,6 +55,9 @@
     <ClCompile Include="BVH.cpp">
       <Filter>geometry</Filter>
     </ClCompile>
+    <ClCompile Include="AABB.cpp">
+      <Filter>geometry</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="template\common.h">
@@ -121,6 +124,9 @@
       <Filter>lights</Filter>
     </ClInclude>
     <ClInclude Include="BVH.h">
+      <Filter>geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="AABB.h">
       <Filter>geometry</Filter>
     </ClInclude>
   </ItemGroup>

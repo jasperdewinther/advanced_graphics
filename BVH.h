@@ -4,7 +4,7 @@
 
 
 struct BVHNode {
-	aabb bounds;
+	AABB bounds;
 	int leftFirst;
 	int count;
 };
@@ -23,9 +23,8 @@ public:
 	void intersects(Ray& r) const;
 	void print_details() const;
 private:
-	void subdivide(BVHNode* parent, uint* poolPtr, uint indices_start);
-	int partition(const aabb& bb, uint start, uint count);
+	void subdivide(BVHNode* parent, uint& poolPtr, uint indices_start);
+	int partition(const AABB& bb, uint start, uint count);
 	void intersect_internal(Ray& r, int node_index = 0) const;
+	AABB CalculateBounds(uint first, uint amount) const;
 };
-
-aabb CalculateBounds(const std::vector<Triangle>& triangles, uint first, uint amount);

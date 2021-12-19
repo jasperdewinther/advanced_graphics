@@ -81,7 +81,7 @@ void Tmpl8::MyApp::set_progression()
 
 void Tmpl8::MyApp::trace_rays()
 {
-	run_multithreaded(nthreads * nthreads, virtual_width, virtual_height, true, [this](int x, int y) {
+	run_multithreaded(nthreads*nthreads, virtual_width, virtual_height, true, [this](int x, int y) {
 			float3 accumulated = float3(0, 0, 0);
 			for (int a = 0; a < antialiasing; a++) {
 				Ray r = rays[(x + virtual_width * y) * antialiasing + a];

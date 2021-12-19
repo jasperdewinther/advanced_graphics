@@ -19,7 +19,7 @@ Scene::Scene() :
 		Plane(float3(0, 0, -1), 20, Material::white)
 		}),
 	triangles(
-		get_mesh_from_file("./assets/sheep.obj", 0.1f, float3(0, 2, 4), Material::red_glass)
+		get_mesh_from_file("./assets/teapot.obj", 1.f, float3(0, 2, 4), Material::red_glass)
 	),
 
 	lights({
