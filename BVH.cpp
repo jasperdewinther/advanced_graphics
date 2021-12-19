@@ -9,6 +9,8 @@ BVH::BVH(std::vector<Triangle> vertices, bool use_SAH):
 	int N = (int)primitives.size();
 	indices = std::make_unique<uint[]>(N);
 	for (int i = 0; i < N; i++) indices[i] = i;
+	centers = std::make_unique<float3[]>(N);
+	for (int i = 0; i < N; i++) centers[i] = vertices[i].get_center();
 	// allocate BVH root node
 	pool = std::make_unique<BVHNode[]>(N*2-1);
 	BVHNode* root = &pool[0];
@@ -17,7 +19,7 @@ BVH::BVH(std::vector<Triangle> vertices, bool use_SAH):
 	root->leftFirst = 0;
 	root->count = N;
 	root->bounds = CalculateBounds(primitives, 0, N);
-	subdivide(root, poolPtr, 0);
+	subdivide(root, &poolPtr, 0);
 }
 
 void BVH::print_details() const
@@ -39,13 +41,13 @@ void BVH::print_details() const
 }
 
 
-void BVH::subdivide(BVHNode* parent, uint& poolPtr, uint indices_start) {
+void BVH::subdivide(BVHNode* parent, uint* poolPtr, uint indices_start) {
 	//printf("parent: %i poolPtr: %i indices_start: %i count: %i\n", ((int)parent - (int)&pool[0])/sizeof(&pool[0]), poolPtr, indices_start, parent->count);
 	//printf("bounds calc min: %f %f %f max: %f %f %f\n", parent->bounds.bmin.x, parent->bounds.bmin.y, parent->bounds.bmin.z, parent->bounds.bmax.x, parent->bounds.bmax.y, parent->bounds.bmax.z);
 	if (parent->count <= 3) { parent->leftFirst = indices_start;  return; } //todo replace with something better like sah
-	parent->leftFirst = poolPtr;
-	BVHNode* left = &pool[poolPtr++];
-	BVHNode* right = &pool[poolPtr++];
+	parent->leftFirst = *poolPtr;
+	BVHNode* left = &pool[*poolPtr++];
+	BVHNode* right = &pool[*poolPtr++];
 	//set left and right count and left
 	int pivot = partition(parent->bounds, indices_start, parent->count);
 	left->count = pivot - indices_start;
@@ -78,24 +80,24 @@ int BVH::partition(const aabb& bb, uint start, uint count)
 	int end = start + count-1;
 	int i = start;
 	if (split_axis == 0) {
-		for (; i < end-1; i++) {
-			if (primitives[indices[i]].get_center().x > pos) { //we have to swap
+		for (; i < end; i++) {
+			if (centers[0].x > pos) { //we have to swap
 				std::swap(indices[i], indices[end]);
 				end--;
 			}
 		}
 	}
 	else if (split_axis == 1) {
-		for (; i < end-1; i++) {
-			if (primitives[indices[i]].get_center().y > pos) { //we have to swap
+		for (; i < end; i++) {
+			if (centers[0].y > pos) { //we have to swap
 				std::swap(indices[i], indices[end]);
 				end--;
 			}
 		}
 	}
 	else {
-		for (; i < end-1; i++) {
-			if (primitives[indices[i]].get_center().z > pos) { //we have to swap
+		for (; i < end; i++) {
+			if (centers[0].z > pos) { //we have to swap
 				std::swap(indices[i], indices[end]);
 				end--;
 			}
@@ -147,9 +149,9 @@ void BVH::intersects(Ray& r) const{
 	else
 	{
 		float2 result_left = r.intersects_aabb(pool[n->leftFirst].bounds);
-		float2 result_right = r.intersects_aabb(pool[n->leftFirst + 1].bounds);
+		float2 result_right = r.intersects_aabb(pool[n->leftFirst+1].bounds);
 		if (result_left.x < result_left.y) intersect_internal(r, n->leftFirst);
-		if (result_right.x < result_right.y) intersect_internal(r, n->leftFirst + 1);
+		if (result_right.x < result_right.y) intersect_internal(r, n->leftFirst+1);
 	}
 }
 
