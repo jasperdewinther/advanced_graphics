@@ -1,16 +1,20 @@
 #include "precomp.h"
 #include "BVH.h"
 
-BVH::BVH(std::vector<Triangle> vertices, bool use_SAH):
-	primitives(vertices)
+
+
+template<>
+BVH<Triangle>::BVH(std::vector<Triangle> primitives, bool use_SAH):
+	primitives(primitives)
 {
+	Timer t = Timer();
 	//from slides
 	// create index array
 	int N = (int)primitives.size();
 	indices = std::make_unique<uint[]>(N);
 	for (int i = 0; i < N; i++) indices[i] = i;
 	centers = std::make_unique<float3[]>(N);
-	for (int i = 0; i < N; i++) centers[i] = vertices[i].get_center();
+	for (int i = 0; i < N; i++) centers[i] = primitives[i].get_center();
 	// allocate BVH root node
 	pool = std::make_unique<BVHNode[]>(N*2-1);
 	BVHNode* root = &pool[0];
@@ -20,71 +24,50 @@ BVH::BVH(std::vector<Triangle> vertices, bool use_SAH):
 	root->count = N;
 	root->bounds = CalculateBounds(0, N);
 	subdivide(root, poolPtr, 0, use_SAH);
-}
-
-void BVH::print_details() const
-{
-	for (int i = 0; i < primitives.size(); i++) printf("vertice: %f %f %f\n", primitives[i].get_center().x, primitives[i].get_center().y, primitives[i].get_center().z);
-	for (int i = 0; i < primitives.size(); i++) printf("%i ", indices[i]);
-	printf("\n");
-	for (int i = 0; i < primitives.size() * 2 - 1; i++) printf("index: %i leftFirst: %i count: %i min: %f %f %f max: %f %f %f\n",
-		i,
-		pool[i].leftFirst,
-		pool[i].count,
-		pool[i].bounds.minx,
-		pool[i].bounds.miny,
-		pool[i].bounds.minz,
-		pool[i].bounds.maxx,
-		pool[i].bounds.maxy,
-		pool[i].bounds.maxz);
-	printf("\n");
-	
-	printf("%i vertices\n", primitives.size());
-
+	printf("built bvh in %f seconds\n", t.elapsed());
+	printf("%i primitives\n", primitives.size());
 	printf("max depth: %i\n", count_depth(&pool[0]));
 }
 
-int BVH::count_depth(BVHNode* parent) const {
+template<>
+BVH<TopBVHNode>::BVH(std::vector<TopBVHNode> primitives, bool use_SAH) :
+	primitives(primitives)
+{
+	Timer t = Timer();
+	//from slides
+	// create index array
+	int N = (int)primitives.size();
+	indices = std::make_unique<uint[]>(N);
+	for (int i = 0; i < N; i++) indices[i] = i;
+	centers = std::make_unique<float3[]>(N);
+	for (int i = 0; i < N; i++) centers[i] = primitives[i].pos;
+	// allocate BVH root node
+	pool = std::make_unique<BVHNode[]>(N * 2 - 1);
+	BVHNode* root = &pool[0];
+	uint poolPtr = 2;
+	// subdivide root node
+	root->leftFirst = 0;
+	root->count = N;
+	root->bounds = CalculateBounds(0, N);
+	subdivide(root, poolPtr, 0, use_SAH);
+	printf("built bvh in %f seconds\n", t.elapsed());
+	printf("%i vertices\n", primitives.size());
+	printf("max depth: %i\n", count_depth(&pool[0]));
+}
+
+template<typename T>
+void BVH<T>::flatten(BVHNode* node)
+{
+	
+}
+
+template<typename T>
+int BVH<T>::count_depth(BVHNode* parent) const {
 	return parent->count == 0 ? max(count_depth(&pool[parent->leftFirst]), count_depth(&pool[parent->leftFirst + 1])) + 1 : 1;
 }
 
-void BVH::write_to_dot_file(std::string filename)
-{
-	FILE* fptr = fopen(filename.c_str(), "w");
-	for (int i = 0; i < primitives.size() * 2 - 1; i++) {
-		if (pool[i].count == 0) {
-			fprintf(fptr,"\tN_%i_%i -> N_%i_%i\n",
-				i,
-				pool[i].count,
-				pool[i].leftFirst,
-				pool[pool[i].leftFirst].count);
-			fprintf(fptr,"\tN_%i_%i -> N_%i_%i\n",
-				i,
-				pool[i].count,
-				pool[i].leftFirst + 1,
-				pool[pool[i].leftFirst + 1].count);
-		}
-		else {
-			for (int j = pool[i].leftFirst; j < pool[i].leftFirst + pool[i].count; j++) {
-				fprintf(fptr, "\tN_%i_%i -> V_%i_%i_%i\n",
-					i,
-					pool[i].count,
-					(int)(primitives[indices[j]].get_center().x * 1000.f + 1000.f),
-					(int)(primitives[indices[j]].get_center().y * 1000.f + 1000.f),
-					(int)(primitives[indices[j]].get_center().z * 1000.f + 1000.f));
-			}
-		}
-	}
-	for (int i = 0; i < primitives.size(); i++)
-		fprintf(fptr, "\tV_%i_%i_%i\n",
-			(int)(primitives[i].get_center().x * 1000.f + 1000.f),
-			(int)(primitives[i].get_center().y * 1000.f + 1000.f),
-			(int)(primitives[i].get_center().z * 1000.f + 1000.f));
-	fclose(fptr);
-}
-
-
-void BVH::subdivide(BVHNode* parent, uint& poolPtr, uint indices_start, bool use_SAH) {
+template<typename T>
+void BVH<T>::subdivide(BVHNode* parent, uint& poolPtr, uint indices_start, bool use_SAH) {
 	//printf("parent: %i poolPtr: %i indices_start: %i count: %i\n", ((int)parent - (int)&pool[0])/sizeof(&pool[0]), poolPtr, indices_start, parent->count);
 	//printf("bounds calc min: %f %f %f max: %f %f %f\n", parent->bounds.bmin.x, parent->bounds.bmin.y, parent->bounds.bmin.z, parent->bounds.bmax.x, parent->bounds.bmax.y, parent->bounds.bmax.z);
 	if (parent->count <= 3) { parent->leftFirst = indices_start;  return; } //todo replace with something better like sah
@@ -104,10 +87,11 @@ void BVH::subdivide(BVHNode* parent, uint& poolPtr, uint indices_start, bool use
 
 }
 
-int BVH::partition(const AABB& bb, uint start, uint count, bool use_SAH)
+template<typename T>
+int BVH<T>::partition(const AABB& bb, uint start, uint count, bool use_SAH)
 {
 	if (use_SAH) {
-		const int BINS = 8;
+		const int BINS = 2;
 		int optimal_axis = 0;
 		int optimal_pos = 0;
 		float optimal_cost = std::numeric_limits<float>::max();
@@ -137,9 +121,6 @@ int BVH::partition(const AABB& bb, uint start, uint count, bool use_SAH)
 				}
 			}
 		}
-
-
-
 		return partition_shuffle(optimal_axis, optimal_pos, start, count);
 	}
 	else {
@@ -161,8 +142,8 @@ int BVH::partition(const AABB& bb, uint start, uint count, bool use_SAH)
 		return partition_shuffle(split_axis, pos, start, count);
 	}
 }
-
-int BVH::partition_shuffle(int axis, float pos, uint start, uint count) {
+template<typename T>
+int BVH<T>::partition_shuffle(int axis, float pos, uint start, uint count) {
 	int end = start + count - 1;
 	int i = start;
 	if (axis == 0) {
@@ -192,8 +173,8 @@ int BVH::partition_shuffle(int axis, float pos, uint start, uint count) {
 	return i;
 }
 
-
-AABB BVH::CalculateBounds(uint first, uint amount) const
+template<>
+AABB BVH<Triangle>::CalculateBounds(uint first, uint amount) const
 {
 	float minx = std::numeric_limits<float>::max();
 	float miny = std::numeric_limits<float>::max();
@@ -204,62 +185,110 @@ AABB BVH::CalculateBounds(uint first, uint amount) const
 
 	for (uint i = first; i < first + amount; i++) {
 		minx = min(primitives[indices[i]].p0.x, minx);
-		minx = min(primitives[indices[i]].p1.x, minx);
-		minx = min(primitives[indices[i]].p2.x, minx);
 		miny = min(primitives[indices[i]].p0.y, miny);
-		miny = min(primitives[indices[i]].p1.y, miny);
-		miny = min(primitives[indices[i]].p2.y, miny);
 		minz = min(primitives[indices[i]].p0.z, minz);
-		minz = min(primitives[indices[i]].p1.z, minz);
-		minz = min(primitives[indices[i]].p2.z, minz);
 		maxx = max(primitives[indices[i]].p0.x, maxx);
-		maxx = max(primitives[indices[i]].p1.x, maxx);
-		maxx = max(primitives[indices[i]].p2.x, maxx);
 		maxy = max(primitives[indices[i]].p0.y, maxy);
-		maxy = max(primitives[indices[i]].p1.y, maxy);
-		maxy = max(primitives[indices[i]].p2.y, maxy);
 		maxz = max(primitives[indices[i]].p0.z, maxz);
+		minx = min(primitives[indices[i]].p1.x, minx);
+		miny = min(primitives[indices[i]].p1.y, miny);
+		minz = min(primitives[indices[i]].p1.z, minz);
+		maxx = max(primitives[indices[i]].p1.x, maxx);
+		maxy = max(primitives[indices[i]].p1.y, maxy);
 		maxz = max(primitives[indices[i]].p1.z, maxz);
+		minx = min(primitives[indices[i]].p2.x, minx);
+		miny = min(primitives[indices[i]].p2.y, miny);
+		minz = min(primitives[indices[i]].p2.z, minz);
+		maxx = max(primitives[indices[i]].p2.x, maxx);
+		maxy = max(primitives[indices[i]].p2.y, maxy);
 		maxz = max(primitives[indices[i]].p2.z, maxz);
+	}
+
+	return AABB(minx, miny, minz, maxx, maxy, maxz);
+}
+template<>
+AABB BVH<TopBVHNode>::CalculateBounds(uint first, uint amount) const
+{
+	float minx = std::numeric_limits<float>::max();
+	float miny = std::numeric_limits<float>::max();
+	float minz = std::numeric_limits<float>::max();
+	float maxx = std::numeric_limits<float>::min();
+	float maxy = std::numeric_limits<float>::min();
+	float maxz = std::numeric_limits<float>::min();
+
+	for (uint i = first; i < first + amount; i++) {
+		minx = min(primitives[indices[i]].obj->pool[0].bounds.minx + primitives[indices[i]].pos.x, minx);
+		maxx = max(primitives[indices[i]].obj->pool[0].bounds.maxx + primitives[indices[i]].pos.x, maxx);
+		miny = min(primitives[indices[i]].obj->pool[0].bounds.miny + primitives[indices[i]].pos.y, miny);
+		maxy = max(primitives[indices[i]].obj->pool[0].bounds.maxy + primitives[indices[i]].pos.y, maxy);
+		minz = min(primitives[indices[i]].obj->pool[0].bounds.minz + primitives[indices[i]].pos.z, minz);
+		maxz = max(primitives[indices[i]].obj->pool[0].bounds.maxz + primitives[indices[i]].pos.z, maxz);
 	}
 
 	return AABB(minx, miny, minz, maxx, maxy, maxz);
 }
 
 
-void BVH::intersects(Ray& r) const{
+template<>
+void BVH<Triangle>::intersects(Ray& r) const {
+	instantiated_intersect(r);
+}
+template<>
+void BVH<TopBVHNode>::intersects(Ray& r) const {
+	instantiated_intersect(r);
+}
+
+template<typename T>
+void BVH<T>::instantiated_intersect(Ray& r) const {
 	BVHNode* n = &pool[0];
 	// more from slides
 	float2 result = r.intersects_aabb(n->bounds);
 	if (result.x > result.y) return;
-	if (n->count) {
-		for (int i = n->leftFirst; i < n->leftFirst + n->count; i++) {
-			primitives[indices[i]].intersects(r);
-		}
-	}
-	else
-	{
-		float2 result_left = r.intersects_aabb(pool[n->leftFirst].bounds);
-		float2 result_right = r.intersects_aabb(pool[n->leftFirst+1].bounds);
-		if (result_left.x <= result_left.y) intersect_internal(r, n->leftFirst);
-		if (result_right.x <= result_right.y) intersect_internal(r, n->leftFirst+1);
-	}
+	intersect_internal(r);
 }
 
-void BVH::intersect_internal(Ray& r, int node_index) const { //assumes ray intersects
+template<typename T>
+void BVH<T>::intersect_internal(Ray& r, int node_index) const { //assumes ray intersects
 	BVHNode* n = &pool[node_index];
 	if (n->count) {
 		//printf("left: %i count: %i\n", n->leftFirst, n->count);
 		for (int i = n->leftFirst; i < n->leftFirst + n->count; i++) {
 			//printf("i: %i index: %i vertex: %f %f %f\n", i, indices[i], primitives[indices[i]].get_center().x, primitives[indices[i]].get_center().y, primitives[indices[i]].get_center().z);
-			primitives[indices[i]].intersects(r);
+			intersect_primitive(primitives[indices[i]], r);
 		}
 	}
 	else
 	{
 		float2 result_left = r.intersects_aabb(pool[n->leftFirst].bounds);
 		float2 result_right = r.intersects_aabb(pool[n->leftFirst+1].bounds);
-		if (result_left.x <= result_left.y) intersect_internal(r, n->leftFirst);
-		if (result_right.x <= result_right.y) intersect_internal(r, n->leftFirst+1);
+		//if (result_left.x <= result_left.y) intersect_internal(r, n->leftFirst);
+		//if (result_right.x <= result_right.y) intersect_internal(r, n->leftFirst+1);
+
+		if (result_left.x < result_left.y) {
+			if (result_right.x < result_right.y) {
+				if (result_left.x < result_right.x) {
+					intersect_internal(r, n->leftFirst);
+					if (result_right.x < r.t) {
+						intersect_internal(r, n->leftFirst + 1);
+					}
+				}
+				else {
+					intersect_internal(r, n->leftFirst + 1);
+					if (result_left.x < r.t) {
+						intersect_internal(r, n->leftFirst);
+					}
+				}
+			}
+			else {
+				intersect_internal(r, n->leftFirst);
+			}
+		}
+		else if (result_right.x <= result_right.y) intersect_internal(r, n->leftFirst + 1);
 	}
+}
+
+void intersect_primitive(const TopBVHNode& node, Ray& ray) {
+	ray.o -= node.pos;
+	node.obj->intersects(ray);
+	ray.o += node.pos;
 }

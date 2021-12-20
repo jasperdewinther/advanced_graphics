@@ -16,7 +16,8 @@ public:
 	std::vector<Plane> planes;
 	std::vector<Sphere> spheres;
 	std::vector<Triangle> triangles;
-	std::vector<BVH> bvhs;
+	std::vector<BVH<Triangle>> bvhs;
+	TopLevelBVH bvh;
 
 
 	const std::vector<Light*> lights = {};

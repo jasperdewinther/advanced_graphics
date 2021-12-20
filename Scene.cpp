@@ -4,14 +4,14 @@
 
 Scene::Scene() :
 	spheres({
-		Sphere(float3(0, 2, 0), 1.5, Material::glass),
-		Sphere(float3(3, 1, 2.5), 1, Material::red_glass),
-		Sphere(float3(-3, 1, -1), 1, Material::cyan),
-		Sphere(float3(-4, 2, -4), 1, Material::mirror),
-		Sphere(float3(6, 4, -6), 4, Material::red_glass),
-		Sphere(float3(0, 2, -6), 2, Material::red_glass),
-		Sphere(float3(-4, 1, -6), 1, Material::red_glass),
-		Sphere(float3(-6, 0.5, -6), 0.5, Material::red_glass)
+		//Sphere(float3(0, 2, 0), 1.5, Material::glass),
+		//Sphere(float3(3, 1, 2.5), 1, Material::red_glass),
+		//Sphere(float3(-3, 1, -1), 1, Material::cyan),
+		//Sphere(float3(-4, 2, -4), 1, Material::mirror),
+		//Sphere(float3(6, 4, -6), 4, Material::red_glass),
+		//Sphere(float3(0, 2, -6), 2, Material::red_glass),
+		//Sphere(float3(-4, 1, -6), 1, Material::red_glass),
+		//Sphere(float3(-6, 0.5, -6), 0.5, Material::red_glass)
 		}),
 	planes({
 		Plane(float3(0, 1, 0), 0, Material::checkerboard),
@@ -19,18 +19,22 @@ Scene::Scene() :
 		Plane(float3(0, 0, -1), 20, Material::white)
 		}),
 	triangles(
-		get_mesh_from_file("./assets/bunny.obj", 1.f, float3(0, 2, 4), Material::normal)
+		get_mesh_from_file("./assets/teapot.obj", 0.5f, float3(0, 0, 0), Material::normal)
 	),
 
 	lights({
-		new PointLight(float3(19,10,19), float3(1,1,1), 50000.0),
-		new SpotLight(float3(15, 10, 0), float3(0, -1, 0), 0.5f, float3(0.1, 0.5, 0.99), 30000.f),
+		new PointLight(float3(19,10,19), float3(1,1,1), 5000000.0),
+		//new SpotLight(float3(15, 10, 0), float3(0, -1, 0), 0.5f, float3(0.1, 0.5, 0.99), 30000.f),
 		new DirectionalLight(float3(1,-1, 0.5), float3(0.9,0.9,0.9), 0.7)
 		})
 {
 	bvhs.emplace_back(triangles, true);
-	//bvhs[0].print_details();
-	//bvhs[0].write_to_dot_file("d.txt");
+	std::vector<TopBVHNode> bvh_nodes;
+	
+	for (int i = 0; i < 1000;  i++) {
+		bvh_nodes.push_back(TopBVHNode{ &bvhs[0], float3(-((float)i/32.f)*3,0,-(i%32)*3) });
+	}
+	bvh = TopLevelBVH(bvh_nodes, true);
 }
 
 float3 Scene::trace_scene(Ray& r, int max_bounces) const {
@@ -118,9 +122,7 @@ void Scene::find_intersection(Ray& r) const {
 	for (int i = 0; i < planes.size(); i++) {
 		planes[i].intersects(r);
 	}
-	for (int i = 0; i < bvhs.size(); i++) {
-		bvhs[i].intersects(r);
-	}
+	bvh.intersects(r);
 }
 
 float3 Scene::find_direct_light_value(const float3& start_pos, const float3& normal) const {

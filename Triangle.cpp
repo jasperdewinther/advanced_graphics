@@ -12,17 +12,17 @@ Triangle::Triangle(float3 p0, float3 p1, float3 p2, float3 normal, Material mate
     m(material)
 {}
 
-void Triangle::intersects(Ray& ray) const
+void intersect_primitive(const Triangle& tri, Ray& ray)
 {
     //https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
     const float EPSILON = 0.0000001;
-    float3 edge1 = p1 - p0;
-    float3 edge2 = p2 - p0;
+    float3 edge1 = tri.p1 - tri.p0;
+    float3 edge2 = tri.p2 - tri.p0;
     float3 h = cross(ray.d, edge2);
     float a = dot(edge1,h);
     if (a > -EPSILON && a < EPSILON) return;    // This ray is parallel to this triangle.
     float f = 1.0 / a;
-    float3 s = ray.o - p0;
+    float3 s = ray.o - tri.p0;
     float u = f * dot(s, h);
     if (u < 0.0 || u > 1.0) return;
     float3 q = cross(s,edge1);
@@ -32,7 +32,7 @@ void Triangle::intersects(Ray& ray) const
     float t = f * dot(edge2, q);
     if (t > 0.f && ray.t > t) {
         ray.t = t;
-        ray.hitptr = this;
+        ray.hitptr = &tri;
         ray.p = Primitive::triangle;
     }
 }

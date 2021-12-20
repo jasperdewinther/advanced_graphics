@@ -54,7 +54,7 @@ private:
 	float scene_progress = 0; //between 0 and 1 where a scene progress of 0 has the same camera position as 1;
 	bool block_progress = true;
 	int fov = 90;
-	float view_height = 3.f;
+	float view_height = 8.f;
 	int upscaling = 8;
 	int antialiasing = 1;
 	float gamma_correction = 1.0;
