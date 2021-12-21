@@ -14,6 +14,7 @@ public:
 	float t; //distance to closest intersection
 	const void* hitptr; //a pointer to the hit object
 	Primitive p = Primitive::nothing;
+	int complexity = 0;
 
 	Ray(float3 origin, float3 direction);
 	float2 intersects_aabb(const AABB& box); //returns tnear and tfar

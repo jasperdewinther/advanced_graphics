@@ -18,6 +18,7 @@ public:
 	std::vector<T> primitives;
 	std::unique_ptr<float3[]> centers;
 	uint concat_depth = 0;
+	uint section_width = pow(2, concat_depth+1);
 
 	BVH() = default;
 	BVH(std::vector<T> primitives, bool use_SAH);
@@ -25,8 +26,10 @@ public:
 	void intersects(Ray& r) const;
 private:
 	void flatten(BVHNode* node);
-	int count_depth(BVHNode* parent) const;
-	void subdivide(BVHNode* parent, uint& poolPtr, uint indices_start, bool use_SAH);
+	int count_depth(BVHNode* node) const;
+	int count_nodes(BVHNode* node) const;
+	void write_to_dot_file(std::string filename) const;
+	void subdivide(BVHNode* parent, std::atomic<uint>& poolPtr, uint indices_start, bool use_SAH);
 	int partition(const AABB& bb, uint start, uint count, bool use_SAH);
 	int partition_shuffle(int axis, float pos, uint start, uint count);
 	void instantiated_intersect(Ray& r) const;

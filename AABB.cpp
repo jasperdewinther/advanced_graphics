@@ -29,3 +29,8 @@ AABB::AABB(float minx, float miny, float minz, float maxx, float maxy, float max
 	maxz(maxz)
 {
 }
+
+float3 AABB::get_center()
+{
+	return float3(minx+(maxx-minx)/2, miny + (maxy - miny) / 2, minz + (maxz - minz) / 2);
+}

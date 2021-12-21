@@ -23,7 +23,7 @@ public:
 	const std::vector<Light*> lights = {};
 	Scene(const Scene&) = delete;
 	Scene();
-	float3 trace_scene(Ray& r, int max_bounces) const;
+	float3 trace_scene(Ray& r, int max_bounces, bool complexity_view) const;
 	void find_intersection(Ray& r) const;
 	float3 find_direct_light_value(const float3& start_pos, const float3& normal) const;
 	void delete_scene();

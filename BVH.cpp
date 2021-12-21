@@ -18,7 +18,7 @@ BVH<Triangle>::BVH(std::vector<Triangle> primitives, bool use_SAH):
 	// allocate BVH root node
 	pool = std::make_unique<BVHNode[]>(N*2-1);
 	BVHNode* root = &pool[0];
-	uint poolPtr = 2;
+	std::atomic<uint> poolPtr = 2;
 	// subdivide root node
 	root->leftFirst = 0;
 	root->count = N;
@@ -27,6 +27,8 @@ BVH<Triangle>::BVH(std::vector<Triangle> primitives, bool use_SAH):
 	printf("built bvh in %f seconds\n", t.elapsed());
 	printf("%i primitives\n", primitives.size());
 	printf("max depth: %i\n", count_depth(&pool[0]));
+	printf("node count: %i\n", count_nodes(&pool[0]));
+	//write_to_dot_file("out.dot");
 }
 
 template<>
@@ -40,40 +42,102 @@ BVH<TopBVHNode>::BVH(std::vector<TopBVHNode> primitives, bool use_SAH) :
 	indices = std::make_unique<uint[]>(N);
 	for (int i = 0; i < N; i++) indices[i] = i;
 	centers = std::make_unique<float3[]>(N);
-	for (int i = 0; i < N; i++) centers[i] = primitives[i].pos;
+	for (int i = 0; i < N; i++) centers[i] = primitives[i].pos + primitives[i].obj->pool[0].bounds.get_center();
 	// allocate BVH root node
 	pool = std::make_unique<BVHNode[]>(N * 2 - 1);
 	BVHNode* root = &pool[0];
-	uint poolPtr = 2;
+	std::atomic<uint> poolPtr = 2;
 	// subdivide root node
 	root->leftFirst = 0;
 	root->count = N;
 	root->bounds = CalculateBounds(0, N);
 	subdivide(root, poolPtr, 0, use_SAH);
 	printf("built bvh in %f seconds\n", t.elapsed());
-	printf("%i vertices\n", primitives.size());
+	printf("%i primitives\n", primitives.size());
 	printf("max depth: %i\n", count_depth(&pool[0]));
+	printf("node count: %i\n", count_nodes(&pool[0]));
 }
 
 template<typename T>
 void BVH<T>::flatten(BVHNode* node)
 {
-	
+	BVHNode temp_nodes[section_width];
+	if (node->count == 0) {
+		temp_nodes[0] = pool[node->leftFirst];
+		temp_nodes[1] = pool[node->leftFirst+1];
+	}
+	int j = 2;
+	for (int i = 0; i < section_width; i++) {
+		if (temp_nodes[i].count == 0) {
+			temp_nodes[j++] = pool[temp_nodes[i].leftFirst];
+			temp_nodes[j++] = pool[temp_nodes[i].leftFirst+1];
+		}
+	}
+	for (int i = 0; i < section_width; i++) {
+		if (temp_nodes[i] != -1) {
+			flatten(temp_nodes[i]);
+		}
+	}
 }
 
 template<typename T>
-int BVH<T>::count_depth(BVHNode* parent) const {
-	return parent->count == 0 ? max(count_depth(&pool[parent->leftFirst]), count_depth(&pool[parent->leftFirst + 1])) + 1 : 1;
+int BVH<T>::count_depth(BVHNode* node) const {
+	return node->count == 0 ? max(count_depth(&pool[node->leftFirst]), count_depth(&pool[node->leftFirst + 1])) + 1 : 1;
+}
+template<typename T>
+int BVH<T>::count_nodes(BVHNode* node) const {
+	return node->count == 0 ? count_nodes(&pool[node->leftFirst]) + count_nodes(&pool[node->leftFirst + 1]) : 1;
+}
+template<>
+void BVH<Triangle>::write_to_dot_file(std::string filename) const
+{
+	FILE* fptr = fopen(filename.c_str(), "w");
+	fprintf(fptr, "digraph{\n");
+
+	float scalex = 1.f/(pool[0].bounds.maxx - pool[0].bounds.minx);
+	float scaley = 1.f/(pool[0].bounds.maxy - pool[0].bounds.miny);
+	float scalez = 1.f/(pool[0].bounds.maxz - pool[0].bounds.minz);
+
+	for (int i = 0; i < primitives.size() * 2 - 1; i++) {
+		if (pool[i].count == 0 && i!=1) {
+			if (pool[i].leftFirst == 0 || pool[i].leftFirst == 1) {
+				continue;
+			}
+			fprintf(fptr, "\tN_%i_%i -> N_%i_%i\n",
+				i,
+				pool[i].count,
+				pool[i].leftFirst,
+				pool[pool[i].leftFirst].count);
+			fprintf(fptr, "\tN_%i_%i -> N_%i_%i\n",
+				i,
+				pool[i].count,
+				pool[i].leftFirst + 1,
+				pool[pool[i].leftFirst + 1].count);
+		}
+		else {
+			for (int j = pool[i].leftFirst; j < pool[i].leftFirst + pool[i].count; j++) {
+				fprintf(fptr, "\tN_%i_%i -> V_%i_%i_%i\n",
+					i,
+					pool[i].count,
+					(int)(primitives[indices[j]].get_center().x * 1000.f * scalex + 1000.f),
+					(int)(primitives[indices[j]].get_center().y * 1000.f * scaley + 1000.f),
+					(int)(primitives[indices[j]].get_center().z * 1000.f * scalez + 1000.f));
+			}
+		}
+	}
+	fprintf(fptr, "}\n");
+	fclose(fptr);
 }
 
 template<typename T>
-void BVH<T>::subdivide(BVHNode* parent, uint& poolPtr, uint indices_start, bool use_SAH) {
+void BVH<T>::subdivide(BVHNode* parent, std::atomic<uint>& poolPtr, uint indices_start, bool use_SAH) {
 	//printf("parent: %i poolPtr: %i indices_start: %i count: %i\n", ((int)parent - (int)&pool[0])/sizeof(&pool[0]), poolPtr, indices_start, parent->count);
 	//printf("bounds calc min: %f %f %f max: %f %f %f\n", parent->bounds.bmin.x, parent->bounds.bmin.y, parent->bounds.bmin.z, parent->bounds.bmax.x, parent->bounds.bmax.y, parent->bounds.bmax.z);
 	if (parent->count <= 3) { parent->leftFirst = indices_start;  return; } //todo replace with something better like sah
-	parent->leftFirst = poolPtr;
-	BVHNode* left = &pool[poolPtr++];
-	BVHNode* right = &pool[poolPtr++];
+	int index = (poolPtr += 2) - 2;
+	parent->leftFirst = index;
+	BVHNode* left = &pool[index];
+	BVHNode* right = &pool[index+1];
 	//set left and right count and left
 	int pivot = partition(parent->bounds, indices_start, parent->count, use_SAH);
 	left->count = pivot - indices_start;
@@ -81,8 +145,30 @@ void BVH<T>::subdivide(BVHNode* parent, uint& poolPtr, uint indices_start, bool 
 	right->count = parent->count - left->count;
 	right->bounds = CalculateBounds(pivot, right->count);
 
-	subdivide(left, poolPtr, indices_start, use_SAH);
-	subdivide(right, poolPtr, pivot, use_SAH);
+	if (left->count > 10000000000 || right->count > 10000000000) {
+		printf("left: %i right %i\n", left->count, right->count);
+		std::thread t1;
+		std::thread t2;
+		bool b1 = false;
+		bool b2 = false;
+		if (left->count > 10000000000) {
+			b1 = true;
+			t1 = std::thread(&BVH::subdivide, this, left, std::ref(poolPtr), indices_start, use_SAH);
+		}
+		if (right->count > 10000000000) {
+			b2 = true;
+			t2 = std::thread(&BVH::subdivide, this, right, std::ref(poolPtr), pivot, use_SAH);
+		}
+		if (b1) {
+			t1.join();
+		}
+		if (b2) {
+			t2.join();
+		}
+		printf("done with i %i with parent count %i\n", indices_start, parent->count);
+	}
+	if (left->count <= 10000000000) subdivide(left, poolPtr, indices_start, use_SAH);
+	if (right->count <= 1000000000) subdivide(right, poolPtr, pivot, use_SAH);
 	parent->count = 0;
 
 }
@@ -91,12 +177,12 @@ template<typename T>
 int BVH<T>::partition(const AABB& bb, uint start, uint count, bool use_SAH)
 {
 	if (use_SAH) {
-		const int BINS = 2;
+		const int BINS = 8;
 		int optimal_axis = 0;
 		int optimal_pos = 0;
 		float optimal_cost = std::numeric_limits<float>::max();
 		for (int axis = 0; axis < 3; axis++) {
-			for (int b = 0; b < BINS; b++) {
+			for (int b = 1; b < BINS; b++) {
 				int end = start + count - 1;
 				int i = start;
 				float pos;
@@ -244,6 +330,7 @@ void BVH<T>::instantiated_intersect(Ray& r) const {
 	// more from slides
 	float2 result = r.intersects_aabb(n->bounds);
 	if (result.x > result.y) return;
+	r.complexity += 1;
 	intersect_internal(r);
 }
 
@@ -259,6 +346,7 @@ void BVH<T>::intersect_internal(Ray& r, int node_index) const { //assumes ray in
 	}
 	else
 	{
+		r.complexity += 1;
 		float2 result_left = r.intersects_aabb(pool[n->leftFirst].bounds);
 		float2 result_right = r.intersects_aabb(pool[n->leftFirst+1].bounds);
 		//if (result_left.x <= result_left.y) intersect_internal(r, n->leftFirst);
@@ -288,6 +376,7 @@ void BVH<T>::intersect_internal(Ray& r, int node_index) const { //assumes ray in
 }
 
 void intersect_primitive(const TopBVHNode& node, Ray& ray) {
+	ray.complexity += 1;
 	ray.o -= node.pos;
 	node.obj->intersects(ray);
 	ray.o += node.pos;

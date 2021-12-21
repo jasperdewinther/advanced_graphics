@@ -34,6 +34,7 @@ void intersect_primitive(const Triangle& tri, Ray& ray)
         ray.t = t;
         ray.hitptr = &tri;
         ray.p = Primitive::triangle;
+        ray.complexity += 1;
     }
 }
 
@@ -81,6 +82,7 @@ std::vector<Triangle> get_mesh_from_file(const std::string& filename, float scal
     });
 
     std::vector<Triangle> triangles;
+    triangles.reserve(std::count_if(lines.begin(), lines.end(), [](const std::string& val) {return val[0] == 'f' && val[1] == ' '; }));
     for (long i = 0; i < lines.size(); i++) { //append all vertices
         if (lines[i][0] == 'f' && lines[i][1] == ' ') {
             std::vector<std::string> parts = split(lines[i], ' ');

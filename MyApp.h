@@ -60,6 +60,8 @@ private:
 	float gamma_correction = 1.0;
 	float vignetting = 0.0;
 	int chromatic_aberration = 0;
+	float distance_to_center = 10.f;
+	bool complexity_view = false;
 
 
 

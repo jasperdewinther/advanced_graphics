@@ -35,7 +35,7 @@ void MyApp::Tick( float deltaTime )
 		fix_ray_buffer();
 	}
 	set_progression();
-	float3 camera_pos = float3(sin(scene_progress * PI*2)*10, view_height, cos(scene_progress * PI*2)*10);
+	float3 camera_pos = float3(sin(scene_progress * PI*2)*distance_to_center, view_height, cos(scene_progress * PI*2)*distance_to_center);
 	float3 camera_dir = normalize(float3(0,2,0) - camera_pos);
 	time_setup = t.elapsed();
 	
@@ -85,7 +85,7 @@ void Tmpl8::MyApp::trace_rays()
 			float3 accumulated = float3(0, 0, 0);
 			for (int a = 0; a < antialiasing; a++) {
 				Ray r = rays[(x + virtual_width * y) * antialiasing + a];
-				accumulated += s.trace_scene(r, bounces);
+				accumulated += s.trace_scene(r, bounces, complexity_view);
 			}
 			pixel_colors[x + virtual_width * y] = accumulated / antialiasing;
 		});
@@ -176,6 +176,7 @@ void Tmpl8::MyApp::PostDraw()
 	ImGui::NewFrame();
 	ImGui::Begin("settings");
 	if (ImGui::Checkbox("Multithreading", &multithreading)) nthreads = multithreading ? (int)std::thread::hardware_concurrency() : 1;
+	ImGui::Checkbox("complexity view", &complexity_view);
 	ImGui::Text("number of threads used: %i", nthreads);
 	ImGui::SliderInt("bounces", &bounces, 0, 20);
 	ImGui::SliderFloat("scene progress", &scene_progress, 0.f, 1.f);
@@ -186,6 +187,7 @@ void Tmpl8::MyApp::PostDraw()
 	ImGui::SliderFloat("vignetting", &vignetting, 0.f, 1.f);
 	ImGui::SliderInt("chromatic aberration", &chromatic_aberration, -10, 10);
 	if (ImGui::SliderInt("Anti aliasing", &antialiasing, 1, 8)) fix_ray_buffer();
+	ImGui::SliderFloat("distance to center", &distance_to_center, 1.f, 100.f);
 	ImGui::Checkbox("block scene progress", &block_progress);
 	ImGui::Text("last frame time: %f", ImGui::GetIO().DeltaTime);
 	float3 colors = pixel_colors[(int)(mousePos.x / upscaling + (mousePos.y / upscaling) * virtual_width)];

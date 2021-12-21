@@ -2,6 +2,8 @@
 #include "Scene.h"
 
 
+const float epsilon = 0.0001;
+
 Scene::Scene() :
 	spheres({
 		//Sphere(float3(0, 2, 0), 1.5, Material::glass),
@@ -15,29 +17,28 @@ Scene::Scene() :
 		}),
 	planes({
 		Plane(float3(0, 1, 0), 0, Material::checkerboard),
-		Plane(float3(-1, 0, 0), 20, Material::white),
-		Plane(float3(0, 0, -1), 20, Material::white)
 		}),
 	triangles(
-		get_mesh_from_file("./assets/teapot.obj", 0.5f, float3(0, 0, 0), Material::normal)
+		get_mesh_from_file("./assets/teapot.obj", 1.f, float3(0, 0, 0), Material::normal)
 	),
 
 	lights({
-		new PointLight(float3(19,10,19), float3(1,1,1), 5000000.0),
+		new PointLight(float3(0,100,0), float3(1,1,1), 500000000.0),
 		//new SpotLight(float3(15, 10, 0), float3(0, -1, 0), 0.5f, float3(0.1, 0.5, 0.99), 30000.f),
 		new DirectionalLight(float3(1,-1, 0.5), float3(0.9,0.9,0.9), 0.7)
 		})
 {
+	printf("loaded %i triangles\n", triangles.size());
 	bvhs.emplace_back(triangles, true);
 	std::vector<TopBVHNode> bvh_nodes;
 	
-	for (int i = 0; i < 1000;  i++) {
+	for (int i = 0; i < 1;  i++) {
 		bvh_nodes.push_back(TopBVHNode{ &bvhs[0], float3(-((float)i/32.f)*3,0,-(i%32)*3) });
 	}
 	bvh = TopLevelBVH(bvh_nodes, true);
 }
 
-float3 Scene::trace_scene(Ray& r, int max_bounces) const {
+float3 Scene::trace_scene(Ray& r, int max_bounces, bool complexity_view) const {
 	if (max_bounces == 0) {
 		return float3(0, 0, 0);
 	}
@@ -75,9 +76,9 @@ float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 			} else {
 				float3 new_dir = normalize(refractive_ratio * r.d + normal * (refractive_ratio * angle_in - sqrt(k)));
 
-				Ray refracted_ray = Ray(hitPos + new_dir * 0.00001, new_dir);
-				refraction_color = trace_scene(refracted_ray, max_bounces - 1);
-
+				Ray refracted_ray = Ray(hitPos + new_dir * epsilon, new_dir);
+				refraction_color = trace_scene(refracted_ray, max_bounces - 1, complexity_view);
+				r.complexity += refracted_ray.complexity;
 				float angle_out = dot(-normal, new_dir);
 
 				float Fr_par = pow((n1 * angle_in - n2 * angle_out) / (n1 * angle_in + n2 * angle_out), 2.f);
@@ -94,11 +95,15 @@ float3 Scene::trace_scene(Ray& r, int max_bounces) const {
 		}
 		if (s > 0.f) {
 			float3 new_dir = reflect(r.d, normal);
-			Ray bounced_ray = Ray(hitPos + new_dir*0.00001, new_dir);
-			specular_color = trace_scene(bounced_ray, max_bounces-1);
+			Ray bounced_ray = Ray(hitPos + new_dir* epsilon, new_dir);
+			specular_color = trace_scene(bounced_ray, max_bounces-1, complexity_view);
+			r.complexity += bounced_ray.complexity;
 		}
 		if (d > 0.f) {
 			direct_light = find_direct_light_value(hitPos, normal);
+		}
+		if (complexity_view) {
+			return float3(1, 0, 0) * ((float)r.complexity / 100.f);
 		}
 		if (leaving) {
 			float3 color = material_color * ((s * specular_color) + (i * refraction_color));
@@ -128,7 +133,7 @@ void Scene::find_intersection(Ray& r) const {
 float3 Scene::find_direct_light_value(const float3& start_pos, const float3& normal) const {
 	float3 l = float3(0, 0, 0);
 	for (auto& obj : lights) {
-		float3 offset_start_pos = (start_pos + normal * 0.00001);
+		float3 offset_start_pos = (start_pos + normal * epsilon);
 		float3 vec_to_light = obj->pos - offset_start_pos;
 		float3 dir = normalize(vec_to_light);
 		
