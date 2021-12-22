@@ -15,7 +15,7 @@ class Scene
 public:
 	std::vector<Plane> planes;
 	std::vector<Sphere> spheres;
-	std::vector<Triangle> triangles;
+	std::vector<std::vector<Triangle>> triangles;
 	std::vector<BVH<Triangle>> bvhs;
 	TopLevelBVH bvh;
 

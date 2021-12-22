@@ -9,6 +9,9 @@ struct BVHNode {
 	int count;
 };
 
+const uint BVHConcat = 0;
+const uint section_width = 2 << BVHConcat;
+
 template<typename T>
 class BVH
 {
@@ -17,15 +20,14 @@ public:
 	std::unique_ptr<BVHNode[]> pool;
 	std::vector<T> primitives;
 	std::unique_ptr<float3[]> centers;
-	uint concat_depth = 0;
-	uint section_width = pow(2, concat_depth+1);
+	
 
 	BVH() = default;
-	BVH(std::vector<T> primitives, bool use_SAH);
+	BVH(std::vector<T> prims, bool use_SAH);
 
 	void intersects(Ray& r) const;
 private:
-	void flatten(BVHNode* node);
+	void flatten(BVHNode* new_pool);
 	int count_depth(BVHNode* node) const;
 	int count_nodes(BVHNode* node) const;
 	void write_to_dot_file(std::string filename) const;

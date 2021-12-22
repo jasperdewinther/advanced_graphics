@@ -16,4 +16,7 @@ public:
 };
 
 void intersect_primitive(const Triangle& tri, Ray& ray);
-std::vector<Triangle> get_mesh_from_file(const std::string& filename, float scalefactor, float3 position, Material material);
+std::vector<Triangle> get_mesh_from_file(const std::string& filename, float scalefactor, Material material);
+
+Triangle parse_triangle(const std::string& s, const std::vector<float3>& vertices, const std::vector<float3>& normals, const float& scalefactor, const Material& material);
+std::pair<Triangle, Triangle> parse_quad(const std::string& s, const std::vector<float3>& vertices, const std::vector<float3>& normals, const float& scalefactor, const Material& material);

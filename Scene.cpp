@@ -18,9 +18,9 @@ Scene::Scene() :
 	planes({
 		Plane(float3(0, 1, 0), 0, Material::checkerboard),
 		}),
-	triangles(
-		get_mesh_from_file("./assets/teapot.obj", 1.f, float3(0, 0, 0), Material::normal)
-	),
+	triangles({
+		get_mesh_from_file("./assets/bunny.obj", 1.f, Material::normal)
+	}),
 
 	lights({
 		new PointLight(float3(0,100,0), float3(1,1,1), 500000000.0),
@@ -29,10 +29,10 @@ Scene::Scene() :
 		})
 {
 	printf("loaded %i triangles\n", triangles.size());
-	bvhs.emplace_back(triangles, true);
+	bvhs.emplace_back(triangles[0], true);
 	std::vector<TopBVHNode> bvh_nodes;
 	
-	for (int i = 0; i < 1;  i++) {
+	for (int i = 0; i < 1000;  i++) {
 		bvh_nodes.push_back(TopBVHNode{ &bvhs[0], float3(-((float)i/32.f)*3,0,-(i%32)*3) });
 	}
 	bvh = TopLevelBVH(bvh_nodes, true);
@@ -103,7 +103,7 @@ float3 Scene::trace_scene(Ray& r, int max_bounces, bool complexity_view) const {
 			direct_light = find_direct_light_value(hitPos, normal);
 		}
 		if (complexity_view) {
-			return float3(1, 0, 0) * ((float)r.complexity / 100.f);
+			return float3(1, 0, 0) * ((float)r.complexity/10000.f);
 		}
 		if (leaving) {
 			float3 color = material_color * ((s * specular_color) + (i * refraction_color));
@@ -114,6 +114,8 @@ float3 Scene::trace_scene(Ray& r, int max_bounces, bool complexity_view) const {
 			return color;
 		}
 		return material_color* ((d * direct_light) + (s * specular_color)) + (i * refraction_color);
+	} else if (complexity_view) {
+		return float3(1, 0, 0) * ((float)r.complexity / 10000.f);
 	}
 	else {
 		return float3(0,0,0);//rainbow sky float3(fabs(r.d.x), fabs(r.d.y), fabs(r.d.z));
