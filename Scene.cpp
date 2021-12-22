@@ -18,9 +18,7 @@ Scene::Scene() :
 	planes({
 		Plane(float3(0, 1, 0), 0, Material::checkerboard),
 		}),
-	triangles({
-		get_mesh_from_file("./assets/bunny.obj", 1.f, Material::normal)
-	}),
+	triangles({}),
 
 	lights({
 		new PointLight(float3(0,100,0), float3(1,1,1), 500000000.0),
@@ -28,13 +26,32 @@ Scene::Scene() :
 		new DirectionalLight(float3(1,-1, 0.5), float3(0.9,0.9,0.9), 0.7)
 		})
 {
-	printf("loaded %i triangles\n", triangles.size());
+	Timer t = Timer();
+	triangles.push_back(get_mesh_from_file("./assets/bunny.obj", 1.f, Material::normal));
+	triangles.push_back(get_mesh_from_file("./assets/buddha.obj", 3.f, Material::normal));
+	triangles.push_back(get_mesh_from_file("./assets/dragon.obj", 4.f, Material::normal));
+	triangles.push_back(get_mesh_from_file("./assets/sheep.obj", 0.1f, Material::normal));
+	int triangle_count = 0;
+	for (auto& v : triangles) triangle_count += v.size();
+
+
+	printf("loaded %i assets in %f seconds containing a total of %i triangles\n", triangles.size(), t.elapsed(), triangle_count);
+
+
 	bvhs.emplace_back(triangles[0], true);
+	bvhs.emplace_back(triangles[1], true);
+	bvhs.emplace_back(triangles[2], true);
+	bvhs.emplace_back(triangles[3], true);
+
 	std::vector<TopBVHNode> bvh_nodes;
-	
-	for (int i = 0; i < 1000;  i++) {
-		bvh_nodes.push_back(TopBVHNode{ &bvhs[0], float3(-((float)i/32.f)*3,0,-(i%32)*3) });
-	}
+	bvh_nodes.push_back(TopBVHNode{ &bvhs[0], float3(0,2,0)});
+	bvh_nodes.push_back(TopBVHNode{ &bvhs[1], float3(0,1,4) });
+	bvh_nodes.push_back(TopBVHNode{ &bvhs[2], float3(4,1,4) });
+	bvh_nodes.push_back(TopBVHNode{ &bvhs[3], float3(4,1,0) });
+
+	//for (int i = 0; i < 1;  i++) {
+	//	bvh_nodes.push_back(TopBVHNode{ &bvhs[0], float3(-((float)i/32.f)*3,0,-(i%32)*3) });
+	//}
 	bvh = TopLevelBVH(bvh_nodes, true);
 }
 

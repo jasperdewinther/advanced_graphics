@@ -64,14 +64,6 @@ std::vector<Triangle> get_mesh_from_file(const std::string& filename, float scal
     vertices.reserve(std::count_if(lines.begin(), lines.end(), [](const std::string& val) {return val[0] == 'v' && val[1] == ' '; }));
     std::for_each(lines.begin(), lines.end(), [&vertices](const std::string& val) {
         if (val[0] == 'v' && val[1] == ' ') {
-            /*stringstream ss(val);
-            float data[3];
-            char ignore;
-            ss >> ignore;
-            for (int i = 0; i < 4; i++) {
-                ss >> data[i];
-            }
-            float3 v = float3(data[0], data[1], data[2]);*/
             std::vector<std::string> parts = split(val, ' ');
             float3 vn = float3(std::stof(parts[1]), std::stof(parts[2]), std::stof(parts[3]));
             vertices.push_back(vn);
