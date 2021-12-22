@@ -51,6 +51,8 @@ float3 Triangle::get_center() const
 
 std::vector<Triangle> get_mesh_from_file(const std::string& filename, float scalefactor, Material material){
     //assumes normals of all vertices belonging to one triangle are the same 
+    printf("loading %s\n", filename.c_str());
+    Timer t = Timer();
 
     std::ifstream infile = std::ifstream(filename);
     std::string line;
@@ -96,7 +98,7 @@ std::vector<Triangle> get_mesh_from_file(const std::string& filename, float scal
         }
     }
 
-
+    printf("loaded %s in %f seconds containing a total of %i triangles\n", filename.c_str(), t.elapsed(), triangles.size());
     return triangles;
 }
 

@@ -7,8 +7,9 @@ template<>
 BVH<Triangle>::BVH(std::vector<Triangle> prims, bool use_SAH):
 	primitives(prims)
 {
-	primitives = prims;
+	printf("building bvh for %i triangles\n", prims.size());
 	Timer t = Timer();
+	primitives = prims;
 	//from slides
 	// create index array
 	int N = (int)primitives.size();
@@ -25,12 +26,8 @@ BVH<Triangle>::BVH(std::vector<Triangle> prims, bool use_SAH):
 	root->count = N;
 	root->bounds = CalculateBounds(0, N);
 	subdivide(root, poolPtr, 0, use_SAH);
-	printf("built bvh in %f seconds\n", t.elapsed());
-	printf("%i primitives\n", primitives.size());
-	printf("max depth: %i\n", count_depth(&pool[0]));
-	printf("node count: %i\n", count_nodes(&pool[0]));
-	//flatten(root);
-	write_to_dot_file("out.dot");
+	printf("built bvh with %i triangles in %f seconds with max depth of %i and a total internal node count of %i\n", primitives.size(), t.elapsed(), count_depth(&pool[0]), count_nodes(&pool[0]));
+	//write_to_dot_file("out.dot");
 }
 
 template<>
@@ -61,49 +58,10 @@ BVH<TopBVHNode>::BVH(std::vector<TopBVHNode> prims, bool use_SAH):
 }
 
 template<typename T>
-void BVH<T>::flatten(BVHNode* node)
-{
-	assert(section_width == 2 || section_width == 4);
-	if (section_width == 2) {
-		return;
-	}
-	if (node == &pool[0]) {
-		//auto temp_pool = std::make_unique<BVHNode[]>(N * 2 - 1);
-		pool[0] = *node;
-
-		BVHNode temp_nodes[4];
-		BVHNode left = pool[node->leftFirst];
-		BVHNode right = pool[node->leftFirst + 1];
-
-		if (left.count == 0) {
-			temp_nodes[0] = pool[left.leftFirst];
-			temp_nodes[1] = pool[left.leftFirst + 1];
-		}
-		else {
-			temp_nodes[0] = BVHNode{ AABB(), 0, 0 };
-			temp_nodes[1] = BVHNode{ AABB(), 0, 0 };
-		}
-		if (right.count == 0) {
-			temp_nodes[2] = pool[right.leftFirst];
-			temp_nodes[3] = pool[right.leftFirst + 1];
-		}
-		else {
-			temp_nodes[0] = BVHNode{ AABB(), 0, 0 };
-			temp_nodes[1] = BVHNode{ AABB(), 0, 0 };
-		}
-		if (left.count == 0) flatten(&left);
-		if (right.count == 0) flatten(&right);
-		pool[0];
-
-		//pool = temp_pool;
-	}
-}
-
-template<typename T>
 int BVH<T>::count_depth(BVHNode* node) const {
 	if (node->count != 0) return 1;
 	int max_depth = 0;
-	for (int i = 0; i < section_width; i++)
+	for (int i = 0; i < 2; i++)
 		max_depth = max(max_depth, count_depth(&pool[node->leftFirst+i])+1);
 	return max_depth;
 }
@@ -111,7 +69,7 @@ template<typename T>
 int BVH<T>::count_nodes(BVHNode* node) const {
 	if (node->count != 0) return 1;
 	int count = 0;
-	for (int i = 0; i < section_width; i++)
+	for (int i = 0; i < 2; i++)
 		count += count_nodes(&pool[node->leftFirst + i]) + 1;
 	return count;
 }
@@ -131,7 +89,7 @@ void BVH<Triangle>::write_to_dot_file(std::string filename) const
 				continue;
 			}
 
-			for (int i = 0; i < section_width; i++)
+			for (int i = 0; i < 2; i++)
 			fprintf(fptr, "\tN_%i_%i -> N_%i_%i\n",
 				i,
 				pool[i].count,
@@ -316,7 +274,7 @@ AABB BVH<Triangle>::CalculateBounds(uint first, uint amount) const
 		maxz = max(primitives[indices[i]].p2.z, maxz);
 	}
 	//printf("%f %f %f %f %f %f\n", minx, maxx, miny, maxy, minz, maxz);
-	return AABB(minx, miny, minz, maxx, maxy, maxz);
+	return AABB(minx - bb_epsilon, miny - bb_epsilon, minz - bb_epsilon, maxx + bb_epsilon, maxy + bb_epsilon, maxz + bb_epsilon);
 }
 template<>
 AABB BVH<TopBVHNode>::CalculateBounds(uint first, uint amount) const
@@ -337,7 +295,7 @@ AABB BVH<TopBVHNode>::CalculateBounds(uint first, uint amount) const
 		maxz = max(primitives[indices[i]].obj->pool[0].bounds.maxz + primitives[indices[i]].pos.z, maxz);
 	}
 
-	return AABB(minx, miny, minz, maxx, maxy, maxz);
+	return AABB(minx - bb_epsilon, miny - bb_epsilon, minz - bb_epsilon, maxx + bb_epsilon, maxy + bb_epsilon, maxz + bb_epsilon);
 }
 
 
@@ -372,97 +330,28 @@ void BVH<T>::intersect_internal(Ray& r, int node_index) const { //assumes ray in
 	{
 		r.complexity += 1;
 	
-		if (section_width == 2) {
-			float2 result_left = r.intersects_aabb(pool[n->leftFirst].bounds);
-			float2 result_right = r.intersects_aabb(pool[n->leftFirst + 1].bounds);
-			if (result_left.x < result_left.y && result_left.x < r.t) {
-				if (result_right.x < result_right.y && result_right.x < r.t) {
-					if (result_left.x < result_right.x) {
-						intersect_internal(r, n->leftFirst);
-						if (result_right.x < r.t) {
-							intersect_internal(r, n->leftFirst + 1);
-						}
-					}
-					else {
-						intersect_internal(r, n->leftFirst + 1);
-						if (result_left.x < r.t) {
-							intersect_internal(r, n->leftFirst);
-						}
-					}
-				}
-				else {
+		float2 result_left = r.intersects_aabb(pool[n->leftFirst].bounds);
+		float2 result_right = r.intersects_aabb(pool[n->leftFirst + 1].bounds);
+		if (result_left.x < result_left.y && result_left.x < r.t) {
+			if (result_right.x < result_right.y && result_right.x < r.t) {
+				if (result_left.x < result_right.x) {
 					intersect_internal(r, n->leftFirst);
-				}
-			}
-			else if (result_right.x <= result_right.y && result_right.x < r.t) intersect_internal(r, n->leftFirst + 1);
-		}
-		else if (section_width == 4) {
-			float2 result[4];
-			result[0] = r.intersects_aabb(pool[n->leftFirst].bounds);
-			result[1] = r.intersects_aabb(pool[n->leftFirst + 1].bounds);
-			result[2] = r.intersects_aabb(pool[n->leftFirst + 2].bounds);
-			result[3] = r.intersects_aabb(pool[n->leftFirst + 3].bounds);
-
-			int first, second, third, fourth = std::numeric_limits<int>::max();
-			for (int i = 0; i < 4; i++) {
-				if (result[i].x < third) {
-					if (result[i].x < second) {
-						if (result[i].x < first) {
-							fourth = third;
-							third = second;
-							second = first;
-							first = i;
-						}
-						else {
-							fourth = third;
-							third = second;
-							second = i;
-						}
-					}
-					else {
-						fourth = third;
-						third = i;
+					if (result_right.x < r.t) {
+						intersect_internal(r, n->leftFirst + 1);
 					}
 				}
 				else {
-					fourth = i;
+					intersect_internal(r, n->leftFirst + 1);
+					if (result_left.x < r.t) {
+						intersect_internal(r, n->leftFirst);
+					}
 				}
 			}
-
-			if (result[first].x < result[first].y && result[first].x < r.t) {
-				intersect_internal(r, n->leftFirst + first);
-				if (result[second].x < result[second].y && result[second].x < r.t) {
-					intersect_internal(r, n->leftFirst + second);
-					if (result[third].x < result[third].y && result[third].x < r.t) {
-						intersect_internal(r, n->leftFirst + third);
-						if (result[fourth].x < result[fourth].y && result[fourth].x < r.t) {
-							intersect_internal(r, n->leftFirst + fourth);
-						}
-					}
-					else if (result[fourth].x < result[fourth].y && result[fourth].x < r.t) {
-						intersect_internal(r, n->leftFirst + fourth);
-					}
-				}
-				else if (result[third].x < result[third].y && result[third].x < r.t) {
-					intersect_internal(r, n->leftFirst + third);
-					if (result[fourth].x < result[fourth].y && result[fourth].x < r.t) {
-						intersect_internal(r, n->leftFirst + fourth);
-					}
-				}
-			} 
-			else if (result[second].x < result[second].y && result[second].x < r.t) {
-				intersect_internal(r, n->leftFirst + second);
-				if (result[third].x < result[third].y && result[third].x < r.t) {
-					intersect_internal(r, n->leftFirst + third);
-					if (result[fourth].x < result[fourth].y && result[fourth].x < r.t) {
-						intersect_internal(r, n->leftFirst + fourth);
-					}
-				}
-				if (result[fourth].x < result[fourth].y && result[fourth].x < r.t) {
-					intersect_internal(r, n->leftFirst + fourth);
-				}
+			else {
+				intersect_internal(r, n->leftFirst);
 			}
 		}
+		else if (result_right.x <= result_right.y && result_right.x < r.t) intersect_internal(r, n->leftFirst + 1);
 	}
 }
 

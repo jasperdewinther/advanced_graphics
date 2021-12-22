@@ -9,6 +9,6 @@ DirectionalLight::DirectionalLight(float3 direction, float3 color, float light_a
 {
 
 }
-float DirectionalLight::calculate_light_intensity(const Ray& r) {
+float DirectionalLight::calculate_light_intensity(const Ray& r) const {
 	return w;
 }

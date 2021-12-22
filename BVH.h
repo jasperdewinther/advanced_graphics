@@ -4,13 +4,13 @@
 
 
 struct BVHNode {
+
 	AABB bounds;
 	int leftFirst;
 	int count;
 };
 
-const uint BVHConcat = 0;
-const uint section_width = 2 << BVHConcat;
+const float bb_epsilon = 0.000001;
 
 template<typename T>
 class BVH
@@ -27,7 +27,6 @@ public:
 
 	void intersects(Ray& r) const;
 private:
-	void flatten(BVHNode* new_pool);
 	int count_depth(BVHNode* node) const;
 	int count_nodes(BVHNode* node) const;
 	void write_to_dot_file(std::string filename) const;

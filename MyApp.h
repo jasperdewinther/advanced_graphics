@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "SceneBuilders.h"
 
 
 
@@ -33,7 +34,7 @@ namespace Tmpl8
 class MyApp : public TheApp
 {
 private:
-	Scene s;
+	Scene s = SceneBuilders::hibiscus_tree();
 	Timer total_time;
 	int nthreads = std::thread::hardware_concurrency();
 	int old_width;

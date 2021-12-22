@@ -10,7 +10,7 @@ SpotLight::SpotLight(float3 position, float3 direction, float max_angle, float3 
 {
 	position = position;
 }
-float SpotLight::calculate_light_intensity(const Ray& r) {
+float SpotLight::calculate_light_intensity(const Ray& r) const {
 	if (dot(float3(-1,-1,-1)*r.d, dir) > angle) {
 		float3 direction = r.o - pos;
 		return (w / (powf(dot(direction, direction), 2)));

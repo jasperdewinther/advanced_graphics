@@ -8,11 +8,12 @@ enum Material {
 	mirror = 1,
 	checkerboard = 2,
 	normal = 3,
-	magenta= 4,
+	magenta = 4,
 	cyan = 5,
 	white = 6,
 	glass = 7,
-	red_glass = 8
+	red_glass = 8,
+	reflective_blue = 9
 };
 
 struct MaterialData
@@ -31,7 +32,7 @@ struct MaterialData
 	float3 get_color(const float3& pos, const float3& norm) const;
 };
 
-const MaterialData materials[9] = {
+const MaterialData materials[10] = {
 	MaterialData(float3(1.f,0.f,0.f), 0.0f),
 	MaterialData(float3(1.f,1.f,1.f), 0.9f),
 	MaterialData([](const float3& pos, const float3& norm) {return (((int)pos.x + (int)pos.z) & 1) ? float3(0.5f,0.8f,0.8f) : float3(0.8f,0.8f,0.5f); }, 0.0f),
@@ -41,4 +42,5 @@ const MaterialData materials[9] = {
 	MaterialData(float3(1.f,1.f,1.f), 0.0f),
 	MaterialData(float3(1.f,1.f,1.f), 0.0f, 0.f, 1.5f), //glass
 	MaterialData(float3(0.878f,0.066f,0.373f), 0.0f, 0.7f, 1.2f),
+	MaterialData(float3(0.1f,0.6f,0.9f), 0.9f),
 };

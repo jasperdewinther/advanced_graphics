@@ -4,55 +4,9 @@
 
 const float epsilon = 0.0001;
 
-Scene::Scene() :
-	spheres({
-		//Sphere(float3(0, 2, 0), 1.5, Material::glass),
-		//Sphere(float3(3, 1, 2.5), 1, Material::red_glass),
-		//Sphere(float3(-3, 1, -1), 1, Material::cyan),
-		//Sphere(float3(-4, 2, -4), 1, Material::mirror),
-		//Sphere(float3(6, 4, -6), 4, Material::red_glass),
-		//Sphere(float3(0, 2, -6), 2, Material::red_glass),
-		//Sphere(float3(-4, 1, -6), 1, Material::red_glass),
-		//Sphere(float3(-6, 0.5, -6), 0.5, Material::red_glass)
-		}),
-	planes({
-		Plane(float3(0, 1, 0), 0, Material::checkerboard),
-		}),
-	triangles({}),
-
-	lights({
-		new PointLight(float3(0,100,0), float3(1,1,1), 500000000.0),
-		//new SpotLight(float3(15, 10, 0), float3(0, -1, 0), 0.5f, float3(0.1, 0.5, 0.99), 30000.f),
-		new DirectionalLight(float3(1,-1, 0.5), float3(0.9,0.9,0.9), 0.7)
-		})
+Scene::Scene()
 {
-	Timer t = Timer();
-	triangles.push_back(get_mesh_from_file("./assets/bunny.obj", 1.f, Material::normal));
-	triangles.push_back(get_mesh_from_file("./assets/buddha.obj", 3.f, Material::normal));
-	triangles.push_back(get_mesh_from_file("./assets/dragon.obj", 4.f, Material::normal));
-	triangles.push_back(get_mesh_from_file("./assets/sheep.obj", 0.1f, Material::normal));
-	int triangle_count = 0;
-	for (auto& v : triangles) triangle_count += v.size();
 
-
-	printf("loaded %i assets in %f seconds containing a total of %i triangles\n", triangles.size(), t.elapsed(), triangle_count);
-
-
-	bvhs.emplace_back(triangles[0], true);
-	bvhs.emplace_back(triangles[1], true);
-	bvhs.emplace_back(triangles[2], true);
-	bvhs.emplace_back(triangles[3], true);
-
-	std::vector<TopBVHNode> bvh_nodes;
-	bvh_nodes.push_back(TopBVHNode{ &bvhs[0], float3(0,2,0)});
-	bvh_nodes.push_back(TopBVHNode{ &bvhs[1], float3(0,1,4) });
-	bvh_nodes.push_back(TopBVHNode{ &bvhs[2], float3(4,1,4) });
-	bvh_nodes.push_back(TopBVHNode{ &bvhs[3], float3(4,1,0) });
-
-	//for (int i = 0; i < 1;  i++) {
-	//	bvh_nodes.push_back(TopBVHNode{ &bvhs[0], float3(-((float)i/32.f)*3,0,-(i%32)*3) });
-	//}
-	bvh = TopLevelBVH(bvh_nodes, true);
 }
 
 float3 Scene::trace_scene(Ray& r, int max_bounces, bool complexity_view) const {
@@ -120,7 +74,7 @@ float3 Scene::trace_scene(Ray& r, int max_bounces, bool complexity_view) const {
 			direct_light = find_direct_light_value(hitPos, normal);
 		}
 		if (complexity_view) {
-			return float3(1, 0, 0) * ((float)r.complexity/10000.f);
+			return float3(1, 0, 0) * ((float)r.complexity/100.f);
 		}
 		if (leaving) {
 			float3 color = material_color * ((s * specular_color) + (i * refraction_color));
@@ -132,10 +86,10 @@ float3 Scene::trace_scene(Ray& r, int max_bounces, bool complexity_view) const {
 		}
 		return material_color* ((d * direct_light) + (s * specular_color)) + (i * refraction_color);
 	} else if (complexity_view) {
-		return float3(1, 0, 0) * ((float)r.complexity / 10000.f);
+		return float3(1, 0, 0) * ((float)r.complexity / 100.f);
 	}
 	else {
-		return float3(0,0,0);//rainbow sky float3(fabs(r.d.x), fabs(r.d.y), fabs(r.d.z));
+		return skycolor;//rainbow sky float3(fabs(r.d.x), fabs(r.d.y), fabs(r.d.z));
 	}
 }
 
@@ -151,9 +105,24 @@ void Scene::find_intersection(Ray& r) const {
 
 float3 Scene::find_direct_light_value(const float3& start_pos, const float3& normal) const {
 	float3 l = float3(0, 0, 0);
-	for (auto& obj : lights) {
+	for (auto& obj : point_lights) {
 		float3 offset_start_pos = (start_pos + normal * epsilon);
-		float3 vec_to_light = obj->pos - offset_start_pos;
+		float3 vec_to_light = obj.pos - offset_start_pos;
+		float3 dir = normalize(vec_to_light);
+
+		Ray r = Ray(offset_start_pos, dir);
+
+		find_intersection(r);
+		if (r.hitptr != nullptr && r.t < sqrt(dot(vec_to_light, vec_to_light))) {
+			continue;
+		}
+		l += obj.color * max(dot(dir, normal), 0.f) * min(obj.calculate_light_intensity(r), 1.f);
+	}
+
+
+	for (auto& obj : directional_lights) {
+		float3 offset_start_pos = (start_pos + normal * epsilon);
+		float3 vec_to_light = obj.pos - offset_start_pos;
 		float3 dir = normalize(vec_to_light);
 		
 		Ray r = Ray(offset_start_pos, dir);
@@ -162,14 +131,24 @@ float3 Scene::find_direct_light_value(const float3& start_pos, const float3& nor
 		if (r.hitptr != nullptr && r.t < sqrt(dot(vec_to_light, vec_to_light))) {
 			continue;
 		}
-		l += obj->color * max(dot(dir, normal), 0.f) * min(obj->calculate_light_intensity(r), 1.f);
+		l += obj.color * max(dot(dir, normal), 0.f) * min(obj.calculate_light_intensity(r), 1.f);
+	}
+
+	for (auto& obj : spot_lights) {
+		float3 offset_start_pos = (start_pos + normal * epsilon);
+		float3 vec_to_light = obj.pos - offset_start_pos;
+		float3 dir = normalize(vec_to_light);
+
+		Ray r = Ray(offset_start_pos, dir);
+
+		find_intersection(r);
+		if (r.hitptr != nullptr && r.t < sqrt(dot(vec_to_light, vec_to_light))) {
+			continue;
+		}
+		l += obj.color * max(dot(dir, normal), 0.f) * min(obj.calculate_light_intensity(r), 1.f);
 	}
 	return l;
 }
 
 void Scene::delete_scene()
-{
-	for (auto p : lights) {
-		delete p;
-	}
-}
+{}

@@ -21,7 +21,7 @@
   <PropertyGroup Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -143,6 +143,7 @@
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="RayHelper.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="SceneBuilders.cpp" />
     <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="SpotLight.cpp" />
     <ClCompile Include="template\template.cpp">
@@ -176,6 +177,7 @@
     <ClInclude Include="Ray.h" />
     <ClInclude Include="RayHelper.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="SceneBuilders.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="SpotLight.h" />
     <ClInclude Include="template\common.h" />

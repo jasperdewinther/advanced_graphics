@@ -20,8 +20,12 @@ public:
 	TopLevelBVH bvh;
 
 
-	const std::vector<Light*> lights = {};
-	Scene(const Scene&) = delete;
+	std::vector<SpotLight> spot_lights;
+	std::vector<PointLight> point_lights;
+	std::vector<DirectionalLight> directional_lights;
+
+	float3 skycolor = float3(0, 0, 0);
+
 	Scene();
 	float3 trace_scene(Ray& r, int max_bounces, bool complexity_view) const;
 	void find_intersection(Ray& r) const;

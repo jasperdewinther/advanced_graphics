@@ -10,6 +10,6 @@ public:
 protected:
 	Light(float3 position, float3 color);
 public:
-	virtual float calculate_light_intensity(const Ray& r) = 0;
+	virtual float calculate_light_intensity(const Ray& r) const = 0;
 };
 
