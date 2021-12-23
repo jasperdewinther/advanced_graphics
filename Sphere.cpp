@@ -24,6 +24,7 @@ void Sphere::intersects(Ray& ray) const
 			ray.t = t;
 			ray.hitptr = this;
 			ray.p = Primitive::sphere;
+			ray.hit_normal = get_normal(ray.o + ray.d * t);
 		}
 	}
 	else {
@@ -36,6 +37,7 @@ void Sphere::intersects(Ray& ray) const
 			ray.t = t;
 			ray.hitptr = this;
 			ray.p = Primitive::sphere;
+			ray.hit_normal = get_normal(ray.o+ray.d*t);
 		}
 	}
 

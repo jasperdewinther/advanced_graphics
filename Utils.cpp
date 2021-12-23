@@ -50,3 +50,7 @@ void run_multithreaded(int threads, int width, int height, bool reduce_hot_chunk
 		thread.join();
 	}
 }
+
+float3 rotate(const float3& data, float angle) {
+	return float3(data.x * cos(angle) + data.z * sin(angle), data.y, data.x * -sin(angle) + data.z * cos(angle));
+}

@@ -17,7 +17,7 @@ float3 Scene::trace_scene(Ray& r, int max_bounces, bool complexity_view) const {
 
 	if (r.hitptr != nullptr) {
 		float3 hitPos = r.o + r.d * r.t;
-		float3 normal = get_normal_hitptr(r, hitPos);
+		float3 normal = r.hit_normal;
 		bool leaving = false;
 		if (dot(r.d, normal) > 0) { // if inside object the normal should be reversed
 			normal *= -1;
@@ -100,6 +100,9 @@ void Scene::find_intersection(Ray& r) const {
 	for (int i = 0; i < planes.size(); i++) {
 		planes[i].intersects(r);
 	}
+	//for (int i = 0; i < triangles[0].size(); i++) {
+	//	intersect_primitive(triangles[0][i], r);
+	//}
 	bvh.intersects(r);
 }
 

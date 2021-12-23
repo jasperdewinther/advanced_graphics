@@ -3,11 +3,17 @@
 #include "Triangle.h"
 
 
-struct BVHNode {
-
+ALIGN(32) struct BVHNode {
 	AABB bounds;
 	int leftFirst;
 	int count;
+};
+
+
+
+struct bb_intersection_results {
+	float2 first;
+	float2 second;
 };
 
 const float bb_epsilon = 0.000001;
@@ -41,6 +47,7 @@ private:
 struct TopBVHNode {
 	BVH<Triangle>* obj;
 	float3 pos;
+	float rotation = 0.f;
 };
 
 using TopLevelBVH = BVH<TopBVHNode>;

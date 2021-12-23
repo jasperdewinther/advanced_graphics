@@ -9,22 +9,13 @@
 
 /*
 implemented:
-- generic ray tracer 
-- free camera in code or along some path at runtime
-- UI using imgui
-- planes and spheres
-- extendable material class 
-- basic scene
-- shadows
-- reflections
-- refraction
-- beers law
+- BVH with top level BVH
+- Very significant performance boost in comparison to brute force (a single teapot with 3600 triangles could take 20 minutes per frame)
+- Usage of SAH and binning when constructing the bvh
+- Can render 1B triangles in seconds (provided that the camera is not in some bad position)
 
-- multithreaded rendering
-- anti aliasing
-- obj file loading into triangle mesh
-- gamma correction, vignetting and chromatic aberration
-- spot and directional lights
+- Model rotation. However, with slight artifact when top level bb has an border in the same location as a low level bb, then parts of the model might not intersect correctly when rotated
+- Multiple scenes which can be loaded 
 */
 
 
@@ -34,7 +25,7 @@ namespace Tmpl8
 class MyApp : public TheApp
 {
 private:
-	Scene s = SceneBuilders::hibiscus_tree();
+	Scene s = SceneBuilders::bunch_of_objects();
 	Timer total_time;
 	int nthreads = std::thread::hardware_concurrency();
 	int old_width;
@@ -44,6 +35,8 @@ private:
 	ImGuiContext* ctx;
 	int virtual_width;
 	int virtual_height;
+
+
 	float3* temp_image; // used for post processing when a temporary image is required
 
 	float time_setup, time_ray_gen, time_trace, post_processing, time_draw; //performance timers
@@ -52,7 +45,7 @@ private:
 	//all imgui settings
 	bool multithreading = true;
 	int bounces = 10;
-	float scene_progress = 0; //between 0 and 1 where a scene progress of 0 has the same camera position as 1;
+	float scene_progress = 0.f; //between 0 and 1 where a scene progress of 0 has the same camera position as 1;
 	bool block_progress = true;
 	int fov = 90;
 	float view_height = 8.f;
@@ -63,6 +56,8 @@ private:
 	int chromatic_aberration = 0;
 	float distance_to_center = 10.f;
 	bool complexity_view = false;
+	bool rotate_objects = false;
+	float rotation_progress = 0.f;
 
 
 
@@ -71,6 +66,9 @@ private:
 	void trace_rays();
 	void apply_post_processing();
 	void render_pixels();
+
+	void update_rotations();
+	void update_positions();
 
 public:
 	// game flow methods

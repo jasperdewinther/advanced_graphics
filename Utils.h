@@ -20,3 +20,4 @@ enum Primitive {
 
 
 void run_multithreaded(int threads, int width, int height, bool reduce_hot_chunks, const std::function<void(int, int)>& f);
+float3 rotate(const float3& data, float angle);

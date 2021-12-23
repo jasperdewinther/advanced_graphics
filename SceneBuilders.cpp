@@ -73,7 +73,7 @@ Scene SceneBuilders::billion_triangles_bunnies()
 	
 	std::vector<TopBVHNode> bvh_nodes;
 	for (int i = 0; i < 10000; i++) { //each bunny has 100k+ triangles
-		bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(-((float)i / 100) * 3,0,-(i % 100) * 3) });
+		bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(-((float)i / 100) * 3,0,-(i % 100) * 3)});
 	}
 	s.bvh = TopLevelBVH(bvh_nodes, true);
 
@@ -101,7 +101,7 @@ Scene SceneBuilders::billion_triangles_buddhas() {
 	return s;
 }
 
-Scene SceneBuilders::hibiscus_tree()
+Scene SceneBuilders::moana_hibiscus_tree()
 {
 	Scene s = Scene();
 
@@ -116,6 +116,41 @@ Scene SceneBuilders::hibiscus_tree()
 
 	s.point_lights.push_back(PointLight(float3(0, 100, 0), float3(1, 1, 1), 500000000.0));
 	s.skycolor = float3(0.5294, 0.8078, 0.9215);
+
+	return s;
+}
+
+Scene SceneBuilders::teapot()
+{
+	Scene s = Scene();
+
+	s.planes.push_back(Plane(float3(0, 1, 0), 0, Material::checkerboard));
+
+	s.triangles.push_back(get_mesh_from_file("./assets/teapot.obj", 1.f, Material::normal)); //of course we trace a literal tree
+	s.bvhs.emplace_back(s.triangles[0], true);
+
+	std::vector<TopBVHNode> bvh_nodes;
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(0,1,0) });
+	s.bvh = TopLevelBVH(bvh_nodes, true);
+
+	s.point_lights.push_back(PointLight(float3(0, 100, 0), float3(1, 1, 1), 500000000.0));
+
+	return s;
+}
+Scene SceneBuilders::glass_dragon()
+{
+	Scene s = Scene();
+
+	s.planes.push_back(Plane(float3(0, 1, 0), 0, Material::checkerboard));
+
+	s.triangles.push_back(get_mesh_from_file("./assets/dragon.obj", 10.f, Material::red_glass)); //of course we trace a literal tree
+	s.bvhs.emplace_back(s.triangles[0], true);
+
+	std::vector<TopBVHNode> bvh_nodes;
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(0,5,0) });
+	s.bvh = TopLevelBVH(bvh_nodes, true);
+
+	s.point_lights.push_back(PointLight(float3(0, 100, 0), float3(1, 1, 1), 500000000.0));
 
 	return s;
 }

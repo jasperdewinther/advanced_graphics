@@ -16,6 +16,7 @@ void Plane::intersects(Ray& ray) const
 		ray.t = 0;
 		ray.hitptr = this;
 		ray.p = Primitive::plane;
+		ray.hit_normal = n;
 	}
 	else {
 		float t = -(dot(ray.o, n) + d) / div;
@@ -23,6 +24,7 @@ void Plane::intersects(Ray& ray) const
 			ray.t = t;
 			ray.hitptr = this;
 			ray.p = Primitive::plane;
+			ray.hit_normal = n;
 		}
 	}
 }

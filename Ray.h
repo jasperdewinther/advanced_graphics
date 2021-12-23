@@ -11,6 +11,7 @@ public:
 	float3 o; //origin
 	float3 d; //direction
 	float3 invDir;
+	float3 hit_normal; //direction when primitive was hit, has to do with rotated objects
 	float t; //distance to closest intersection
 	const void* hitptr; //a pointer to the hit object
 	Primitive p = Primitive::nothing;

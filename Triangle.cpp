@@ -35,6 +35,7 @@ void intersect_primitive(const Triangle& tri, Ray& ray)
         ray.hitptr = &tri;
         ray.p = Primitive::triangle;
         ray.complexity += 1;
+        ray.hit_normal = tri.normal;
     }
 }
 

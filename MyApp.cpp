@@ -74,8 +74,18 @@ void Tmpl8::MyApp::fix_ray_buffer()
 void Tmpl8::MyApp::set_progression()
 {
 	if (!block_progress) {
-		scene_progress += ((100.0 / 1000) / 10);
+		scene_progress += 0.01;
 		scene_progress = scene_progress - (int)scene_progress;
+	}
+	if (rotate_objects) {
+		rotation_progress += 0.1;
+		rotation_progress = rotation_progress - (int)rotation_progress;
+		update_rotations();
+	}
+}
+void Tmpl8::MyApp::update_rotations() {
+	for (auto& bvh : s.bvh.primitives) {
+		bvh.rotation = rotation_progress * 360.f;
 	}
 }
 
@@ -177,9 +187,12 @@ void Tmpl8::MyApp::PostDraw()
 	ImGui::Begin("settings");
 	if (ImGui::Checkbox("Multithreading", &multithreading)) nthreads = multithreading ? (int)std::thread::hardware_concurrency() : 1;
 	ImGui::Checkbox("complexity view", &complexity_view);
+	ImGui::Checkbox("rotate objects", &rotate_objects);
 	ImGui::Text("number of threads used: %i", nthreads);
 	ImGui::SliderInt("bounces", &bounces, 0, 20);
 	ImGui::SliderFloat("scene progress", &scene_progress, 0.f, 1.f);
+	if (ImGui::SliderFloat("rotation progress", &rotation_progress, 0.f, 1.f)) update_rotations();
+
 	ImGui::SliderInt("fov", &fov, 0, 180);
 	ImGui::SliderFloat("view height", &view_height, 0.1f, 19.9f);
 	if (ImGui::SliderInt("upscaling", &upscaling, 1, 8)) {virtual_width = screen->width / upscaling; virtual_height = screen->height / upscaling; fix_ray_buffer();}
