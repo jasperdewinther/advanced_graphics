@@ -100,9 +100,6 @@ void Scene::find_intersection(Ray& r) const {
 	for (int i = 0; i < planes.size(); i++) {
 		planes[i].intersects(r);
 	}
-	//for (int i = 0; i < triangles[0].size(); i++) {
-	//	intersect_primitive(triangles[0][i], r);
-	//}
 	bvh.intersects(r);
 }
 

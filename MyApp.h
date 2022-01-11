@@ -31,11 +31,13 @@ private:
 	int old_width;
 	int old_height;
 	Ray* rays;
+	float3* accumulation_buffer;
 	float3* pixel_colors;
 	float3* temp_image; // used for post processing when a temporary image is required
 	ImGuiContext* ctx;
 	int virtual_width;
 	int virtual_height;
+	uint accumulation_count = 0;
 
 	std::unique_ptr<Kernel> ray_gen_kernel = std::make_unique<Kernel>((char*)"ray_gen.cl", (char*)"ray_gen");
 	std::unique_ptr<Buffer> rays_buffer;
@@ -50,7 +52,6 @@ private:
 	int fov = 90;
 	float view_height = 8.f;
 	int upscaling = 8;
-	int antialiasing = 1;
 	float gamma_correction = 1.0;
 	float vignetting = 0.0;
 	int chromatic_aberration = 0;
@@ -58,6 +59,7 @@ private:
 	bool complexity_view = false;
 	bool rotate_objects = false;
 	float rotation_progress = 0.f;
+	 
 
 
 
@@ -68,6 +70,8 @@ private:
 	void render_pixels();
 
 	void update_rotations();
+	void reset_image();
+	uint color_to_uint(const float3& color);
 
 public:
 	// game flow methods

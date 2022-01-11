@@ -29,6 +29,6 @@ void generate_primary_rays(
 	int height,
 	Ray* rays, 
 	int nthreads, 
-	int antialiasing,
 	Kernel* kernel,
-	Buffer* buffer); //fov in horizontal degrees
+	Buffer* buffer,
+	int noise); //fov in horizontal degrees
