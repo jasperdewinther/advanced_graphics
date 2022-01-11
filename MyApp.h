@@ -37,7 +37,7 @@ private:
 	int virtual_width;
 	int virtual_height;
 
-	std::unique_ptr<Kernel> ray_gen_kernel = std::make_unique<Kernel>((char*)"ray_gen.cl", (char*)"main");
+	std::unique_ptr<Kernel> ray_gen_kernel = std::make_unique<Kernel>((char*)"ray_gen.cl", (char*)"ray_gen");
 	std::unique_ptr<Buffer> rays_buffer;
 
 	float time_setup, time_ray_gen, time_trace, post_processing, time_draw; //performance timers

@@ -48,7 +48,7 @@ void generate_primary_rays(const float3& camerapos, const float3& camera_directi
 		side *= -1;
 	}
 	up = normalize(up);
-
+	
 	kernel->SetArgument(0, buffer);
 	kernel->SetArgument(1, antialiasing);
 	kernel->SetArgument(2, width);
@@ -83,7 +83,6 @@ void generate_primary_rays(const float3& camerapos, const float3& camera_directi
 			dir = normalize(dir);
 			rays[(x + width * y) * antialiasing + n] = Ray(camerapos, dir);
 		}
-		
 	});*/
 }
 

@@ -2,14 +2,15 @@
 int xorshift32(int* state)
 {
 	/* Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs" */
-	int x = state;
+	int x = *state;
 	x ^= x << 13;
 	x ^= x >> 17;
 	x ^= x << 5;
-	return state = x;
+    *state = x;
+	return x;
 };
 
-__kernel void main( 
+__kernel void ray_gen( 
     __global float* ray_data, 
     int antialiasing, 
     int width, 
@@ -62,3 +63,4 @@ __kernel void main(
         ray_data[((x + width * y) * antialiasing + n) * ray_size + 19] = 0; // complexity
 	}
 }
+
