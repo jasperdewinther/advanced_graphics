@@ -31,7 +31,7 @@ float2 Ray::intersects_aabb(const AABB & box)
 }
 
 
-void generate_primary_rays(const float3& camerapos, const float3& camera_direction, float fov, int width, int height, Ray* rays, int nthreads, int antialiasing) {
+void generate_primary_rays(const float3& camerapos, const float3& camera_direction, float fov, int width, int height, Ray* rays, int nthreads, int antialiasing, Kernel* kernel, Buffer* buffer) {
 	float aspect_ratio = (float)width / (float)height;
 	float half_aspect_ratio = aspect_ratio / 2;
 	float3 screen_center = camerapos + (camera_direction * (float)(half_aspect_ratio/tan(fov*PI / 360.0)));
@@ -49,8 +49,30 @@ void generate_primary_rays(const float3& camerapos, const float3& camera_directi
 	}
 	up = normalize(up);
 
+	kernel->SetArgument(0, buffer);
+	kernel->SetArgument(1, antialiasing);
+	kernel->SetArgument(2, width);
+	kernel->SetArgument(3, height);
+	kernel->SetArgument(4, up.x);
+	kernel->SetArgument(5, up.y);
+	kernel->SetArgument(6, up.z);
+	kernel->SetArgument(7, side.x);
+	kernel->SetArgument(8, side.y);
+	kernel->SetArgument(9, side.z);
+	kernel->SetArgument(10, screen_center.x);
+	kernel->SetArgument(11, screen_center.y);
+	kernel->SetArgument(12, screen_center.z);
+	kernel->SetArgument(13, aspect_ratio);
+	kernel->SetArgument(14, camerapos.x);
+	kernel->SetArgument(15, camerapos.y);
+	kernel->SetArgument(16, camerapos.z);
+	kernel->SetArgument(17, (int)(sizeof(Ray)/sizeof(float)));
+	kernel->Run2D(int2(width - (width%4), height - (height%4)), int2(4,4));
+	buffer->CopyFromDevice();
 
-	run_multithreaded(nthreads, width, height, false, [&antialiasing, &width, &height, &up, &side, &screen_center, &aspect_ratio, &camerapos, &rays](int x, int y) {
+
+
+	/*run_multithreaded(nthreads, width, height, false, [&antialiasing, &width, &height, &up, &side, &screen_center, &aspect_ratio, &camerapos, &rays](int x, int y) {
 		xorshift_state rand = xorshift_state{ (uint)x * y + 1 };
 
 		for (int n = 0; n < antialiasing; n++) {
@@ -62,6 +84,6 @@ void generate_primary_rays(const float3& camerapos, const float3& camera_directi
 			rays[(x + width * y) * antialiasing + n] = Ray(camerapos, dir);
 		}
 		
-	});
+	});*/
 }
 

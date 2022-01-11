@@ -25,22 +25,22 @@ namespace Tmpl8
 class MyApp : public TheApp
 {
 private:
-	Scene s = SceneBuilders::bunch_of_objects();
+	Scene s = SceneBuilders::teapot();
 	Timer total_time;
 	int nthreads = std::thread::hardware_concurrency();
 	int old_width;
 	int old_height;
 	Ray* rays;
 	float3* pixel_colors;
+	float3* temp_image; // used for post processing when a temporary image is required
 	ImGuiContext* ctx;
 	int virtual_width;
 	int virtual_height;
 
-
-	float3* temp_image; // used for post processing when a temporary image is required
+	std::unique_ptr<Kernel> ray_gen_kernel = std::make_unique<Kernel>((char*)"ray_gen.cl", (char*)"main");
+	std::unique_ptr<Buffer> rays_buffer;
 
 	float time_setup, time_ray_gen, time_trace, post_processing, time_draw; //performance timers
-
 
 	//all imgui settings
 	bool multithreading = true;
@@ -68,7 +68,6 @@ private:
 	void render_pixels();
 
 	void update_rotations();
-	void update_positions();
 
 public:
 	// game flow methods

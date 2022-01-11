@@ -7,32 +7,17 @@ template<>
 BVH<Triangle>::BVH(std::vector<Triangle> prims, bool use_SAH):
 	primitives(prims)
 {
-	printf("building bvh for %i triangles\n", prims.size());
-	Timer t = Timer();
-	primitives = prims;
-	//from slides
-	// create index array
-	int N = (int)primitives.size();
-	indices = std::make_unique<uint[]>(N);
-	for (int i = 0; i < N; i++) indices[i] = i;
-	centers = std::make_unique<float3[]>(N);
-	for (int i = 0; i < N; i++) centers[i] = primitives[i].get_center();
-	// allocate BVH root node
-	pool = std::make_unique<BVHNode[]>(N*2-1);
-	BVHNode* root = &pool[0];
-	std::atomic<uint> poolPtr = 2;
-	// subdivide root node
-	root->leftFirst = 0;
-	root->count = N;
-	root->bounds = CalculateBounds(0, N);
-	subdivide(root, poolPtr, 0, use_SAH);
-	printf("built bvh with %i triangles in %f seconds with max depth of %i and a total internal node count of %i\n", primitives.size(), t.elapsed(), count_depth(&pool[0]), count_nodes(&pool[0]));
-	//write_to_dot_file("out.dot");
+	BVH_construct(use_SAH);
+}
+template<>
+BVH<TopBVHNode>::BVH(std::vector<TopBVHNode> prims, bool use_SAH) :
+	primitives(prims)
+{
+	BVH_construct(use_SAH);
 }
 
-template<>
-BVH<TopBVHNode>::BVH(std::vector<TopBVHNode> prims, bool use_SAH):
-	primitives(prims)
+template<typename T>
+void BVH<T>::BVH_construct(bool use_SAH)
 {
 	Timer t = Timer();
 	//from slides
@@ -41,7 +26,8 @@ BVH<TopBVHNode>::BVH(std::vector<TopBVHNode> prims, bool use_SAH):
 	indices = std::make_unique<uint[]>(N);
 	for (int i = 0; i < N; i++) indices[i] = i;
 	centers = std::make_unique<float3[]>(N);
-	for (int i = 0; i < N; i++) centers[i] = primitives[i].pos + primitives[i].obj->pool[0].bounds.get_center();
+	set_centers(N);
+	
 	// allocate BVH root node
 	pool = std::make_unique<BVHNode[]>(N * 2 - 1);
 	BVHNode* root = &pool[0];
@@ -55,6 +41,18 @@ BVH<TopBVHNode>::BVH(std::vector<TopBVHNode> prims, bool use_SAH):
 	printf("%i primitives\n", primitives.size());
 	printf("max depth: %i\n", count_depth(&pool[0]));
 	printf("node count: %i\n", count_nodes(&pool[0]));
+}
+
+template<>
+void BVH<TopBVHNode>::set_centers(uint N)
+{
+	for (int i = 0; i < N; i++) centers[i] = primitives[i].pos + primitives[i].obj->pool[0].bounds.get_center();
+}
+
+template<>
+void BVH<Triangle>::set_centers(uint N)
+{
+	for (int i = 0; i < N; i++) centers[i] = primitives[i].get_center();
 }
 
 template<typename T>
@@ -72,43 +70,6 @@ int BVH<T>::count_nodes(BVHNode* node) const {
 	for (int i = 0; i < 2; i++)
 		count += count_nodes(&pool[node->leftFirst + i]) + 1;
 	return count;
-}
-template<>
-void BVH<Triangle>::write_to_dot_file(std::string filename) const
-{
-	FILE* fptr = fopen(filename.c_str(), "w");
-	fprintf(fptr, "digraph{\n");
-
-	float scalex = 1.f/(pool[0].bounds.maxx - pool[0].bounds.minx);
-	float scaley = 1.f/(pool[0].bounds.maxy - pool[0].bounds.miny);
-	float scalez = 1.f/(pool[0].bounds.maxz - pool[0].bounds.minz);
-
-	for (int i = 0; i < primitives.size() * 2 - 1; i++) {
-		if (pool[i].count == 0 && i!=1) {
-			if (pool[i].leftFirst == 0 || pool[i].leftFirst == 1) {
-				continue;
-			}
-
-			for (int i = 0; i < 2; i++)
-			fprintf(fptr, "\tN_%i_%i -> N_%i_%i\n",
-				i,
-				pool[i].count,
-				pool[i].leftFirst + i,
-				pool[pool[i].leftFirst+i].count);
-		}
-		else {
-			for (int j = pool[i].leftFirst; j < pool[i].leftFirst + pool[i].count; j++) {
-				fprintf(fptr, "\tN_%i_%i -> V_%i_%i_%i\n",
-					i,
-					pool[i].count,
-					(int)(primitives[indices[j]].get_center().x * 1000.f * scalex + 1000.f),
-					(int)(primitives[indices[j]].get_center().y * 1000.f * scaley + 1000.f),
-					(int)(primitives[indices[j]].get_center().z * 1000.f * scalez + 1000.f));
-			}
-		}
-	}
-	fprintf(fptr, "}\n");
-	fclose(fptr);
 }
 
 template<typename T>

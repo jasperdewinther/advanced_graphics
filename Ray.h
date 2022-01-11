@@ -21,4 +21,14 @@ public:
 	float2 intersects_aabb(const AABB& box); //returns tnear and tfar
 };
 
-void generate_primary_rays(const float3& camerapos, const float3& camera_direction, float fov, int width, int height, Ray* rays, int nthreads, int antialiasing); //fov in horizontal degrees
+void generate_primary_rays(
+	const float3& camerapos, 
+	const float3& camera_direction, 
+	float fov, 
+	int width, 
+	int height,
+	Ray* rays, 
+	int nthreads, 
+	int antialiasing,
+	Kernel* kernel,
+	Buffer* buffer); //fov in horizontal degrees

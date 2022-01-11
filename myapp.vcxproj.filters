@@ -142,6 +142,18 @@
     <None Include="cl\kernels.cl">
       <Filter>template\cl</Filter>
     </None>
+    <None Include="ray_gen.cl">
+      <Filter>cl</Filter>
+    </None>
+    <None Include="trace_rays.cl">
+      <Filter>cl</Filter>
+    </None>
+    <None Include="handle_hits.cl">
+      <Filter>cl</Filter>
+    </None>
+    <None Include="trace_shadows.cl">
+      <Filter>cl</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="template">
@@ -158,6 +170,9 @@
     </Filter>
     <Filter Include="imgui">
       <UniqueIdentifier>{cbc5ccd7-b848-44dd-814e-f0cd835c49db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="cl">
+      <UniqueIdentifier>{06c64e4f-bcfd-43ea-b349-860fed7ef921}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

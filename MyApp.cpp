@@ -6,7 +6,10 @@
 #include "Plane.h"
 #include "BVH.h"
 
-TheApp* CreateApp() { return new MyApp(); }
+TheApp* CreateApp() { 
+	Kernel::InitCL();
+	return new MyApp();
+}
 
 void MyApp::Init()
 {
@@ -40,7 +43,7 @@ void MyApp::Tick( float deltaTime )
 	time_setup = t.elapsed();
 	
 	t.reset();
-	generate_primary_rays(camera_pos, camera_dir, (float)fov, virtual_width, virtual_height, rays, nthreads, antialiasing);
+	generate_primary_rays(camera_pos, camera_dir, (float)fov, virtual_width, virtual_height, rays, nthreads, antialiasing, ray_gen_kernel.get(), rays_buffer.get());
 	time_ray_gen = t.elapsed();
 
 	t.reset();
@@ -60,6 +63,7 @@ void Tmpl8::MyApp::fix_ray_buffer()
 {
 	delete[] rays;
 	rays = (Ray*)malloc(sizeof(Ray) * virtual_width * virtual_height * antialiasing);
+	rays_buffer = std::make_unique<Buffer>(sizeof(Ray) * virtual_width * virtual_height * antialiasing/4, Buffer::DEFAULT, rays);
 
 	delete[] pixel_colors;
 	pixel_colors = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
@@ -193,7 +197,7 @@ void Tmpl8::MyApp::PostDraw()
 	ImGui::SliderFloat("scene progress", &scene_progress, 0.f, 1.f);
 	if (ImGui::SliderFloat("rotation progress", &rotation_progress, 0.f, 1.f)) update_rotations();
 
-	ImGui::SliderInt("fov", &fov, 0, 180);
+	ImGui::SliderInt("fov", &fov, 1, 180);
 	ImGui::SliderFloat("view height", &view_height, 0.1f, 19.9f);
 	if (ImGui::SliderInt("upscaling", &upscaling, 1, 8)) {virtual_width = screen->width / upscaling; virtual_height = screen->height / upscaling; fix_ray_buffer();}
 	ImGui::SliderFloat("gamma correction", &gamma_correction, 0.f, 5.f);
@@ -220,6 +224,8 @@ void MyApp::Shutdown() {
 	printf("total runtime: %f", total_time.elapsed());
 	s.delete_scene();
 	delete[] rays;
+	delete[] pixel_colors;
+	delete[] temp_image;
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();

@@ -187,8 +187,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="cl\kernels.cl" />
+    <None Include="handle_hits.cl" />
+    <None Include="ray_gen.cl" />
     <None Include="README.md" />
     <None Include="template\LICENSE" />
+    <None Include="trace_rays.cl" />
+    <None Include="trace_shadows.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

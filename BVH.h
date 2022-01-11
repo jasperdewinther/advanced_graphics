@@ -33,9 +33,10 @@ public:
 
 	void intersects(Ray& r) const;
 private:
+	void BVH_construct(bool use_SAH);
+	void set_centers(uint N);
 	int count_depth(BVHNode* node) const;
 	int count_nodes(BVHNode* node) const;
-	void write_to_dot_file(std::string filename) const;
 	void subdivide(BVHNode* parent, std::atomic<uint>& poolPtr, uint indices_start, bool use_SAH);
 	int partition(const AABB& bb, uint start, uint count, bool use_SAH);
 	int partition_shuffle(int axis, float pos, uint start, uint count);
