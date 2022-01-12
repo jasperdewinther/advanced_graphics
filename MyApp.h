@@ -25,7 +25,7 @@ namespace Tmpl8
 class MyApp : public TheApp
 {
 private:
-	Scene s = SceneBuilders::teapot();
+	Scene s = SceneBuilders::path_tracing_test();
 	Timer total_time;
 	int nthreads = std::thread::hardware_concurrency();
 	int old_width;

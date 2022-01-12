@@ -108,7 +108,7 @@ void Tmpl8::MyApp::trace_rays()
 {
 	run_multithreaded(nthreads*nthreads, virtual_width, virtual_height, true, [this](int x, int y) {
 			Ray r = rays[x + virtual_width * y];
-			float3 accumulated = s.trace_scene(r, bounces, complexity_view);
+			float3 accumulated = s.trace_scene(r, bounces, complexity_view, (accumulation_count+1)*(1+x + virtual_width * y));
 			accumulation_buffer[x + virtual_width * y] += accumulated;
 		});
 }
@@ -197,7 +197,7 @@ void Tmpl8::MyApp::PostDraw()
 	if (ImGui::SliderFloat("scene progress", &scene_progress, 0.f, 1.f)) reset_image();
 	if (ImGui::SliderFloat("rotation progress", &rotation_progress, 0.f, 1.f)) { update_rotations(); reset_image();};
 	if (ImGui::SliderInt("fov", &fov, 1, 180)) reset_image();
-	ImGui::SliderFloat("view height", &view_height, 0.1f, 19.9f);
+	if (ImGui::SliderFloat("view height", &view_height, 0.1f, 19.9f)) reset_image();
 	if (ImGui::SliderInt("upscaling", &upscaling, 1, 8)) {
 		virtual_width = screen->width / upscaling; 
 		virtual_height = screen->height / upscaling; 
@@ -217,6 +217,7 @@ void Tmpl8::MyApp::PostDraw()
 	ImGui::Text("trace: %f", time_trace);
 	ImGui::Text("post_processing: %f", post_processing);
 	ImGui::Text("draw: %f", time_draw);
+	ImGui::Text("accumulated: %i", accumulation_count);
 
 	ImGui::End();
 	ImGui::Render();

@@ -11,11 +11,11 @@ uint32_t xorshift32(struct xorshift_state* state);
 
 std::vector<string> split(const std::string& s, char delim);
 
-enum Primitive {
-	sphere = 0,
+enum Primitive : uint32_t {
+	nothing = 0,
 	plane = 1,
 	triangle = 2,
-	nothing = 3
+	sphere = 3
 };
 
 

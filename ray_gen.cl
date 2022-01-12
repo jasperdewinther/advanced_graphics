@@ -37,7 +37,7 @@ __kernel void ray_gen(
     uint x = get_global_id( 0 );
     uint y = get_global_id( 1 );
 
-    struct xorshift_state rand = {.a=noise};
+    struct xorshift_state rand = {.a=noise==0?12:noise}; //12 is an arbitrary number
 
 	float px = ((float)x + (float)xorshift32(&rand) / (float)4294967295) / (float)width;
 	float py = ((float)y + (float)xorshift32(&rand) / (float)4294967295) / (float)height;
@@ -61,7 +61,7 @@ __kernel void ray_gen(
     ray_data[(x + width * y) * ray_size + 10] = 1.f/dir.z;
     ray_data[(x + width * y) * ray_size + 16] = 999999999.f; //distance tointersection
     ray_data[(x + width * y) * ray_size + 17] = 0; // hitptr
-    ray_data[(x + width * y) * ray_size + 18] = 3; // 3 equates to nothing primative
-    ray_data[(x + width * y) * ray_size + 19] = 0; // complexity
+    ray_data[(x + width * y) * ray_size + 19] = 0; // 3 equates to nothing primative
+    ray_data[(x + width * y) * ray_size + 20] = 0; // complexity
 }
 

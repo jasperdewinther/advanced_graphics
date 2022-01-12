@@ -3,11 +3,11 @@
 
 
 
-Material get_material_hitptr(const Ray& r) {
+MaterialData get_material_hitptr(const Ray& r) {
 	switch (r.p) {
-	case Primitive::triangle: return ((Triangle*)r.hitptr)->m;
-	case Primitive::sphere: return ((Sphere*)r.hitptr)->m;
-	case Primitive::plane: return ((Plane*)r.hitptr)->m;
+	case Primitive::triangle: return materials[(int)((Triangle*)r.hitptr)->m];
+	case Primitive::sphere: return materials[(int)((Sphere*)r.hitptr)->m];
+	case Primitive::plane: return materials[(int)((Plane*)r.hitptr)->m];
 	}
 }
 

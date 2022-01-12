@@ -10,5 +10,6 @@ namespace SceneBuilders
 	Scene moana_hibiscus_tree();
 	Scene teapot();
 	Scene glass_dragon();
+	Scene path_tracing_test();
 };
 

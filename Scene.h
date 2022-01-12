@@ -27,7 +27,7 @@ public:
 	float3 skycolor = float3(0, 0, 0);
 
 	Scene();
-	float3 trace_scene(Ray& r, int max_bounces, bool complexity_view) const;
+	float3 trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) const;
 	void find_intersection(Ray& r) const;
 	float3 find_direct_light_value(const float3& start_pos, const float3& normal) const;
 	void delete_scene();

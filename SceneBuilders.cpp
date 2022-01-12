@@ -126,7 +126,7 @@ Scene SceneBuilders::teapot()
 
 	s.planes.push_back(Plane(float3(0, 1, 0), 0, Material::checkerboard));
 
-	s.triangles.push_back(get_mesh_from_file("./assets/teapot.obj", 1.f, Material::normal)); //of course we trace a literal tree
+	s.triangles.push_back(get_mesh_from_file("./assets/teapot.obj", 1.f, Material::white_light));
 	s.bvhs.emplace_back(s.triangles[0], true);
 
 	std::vector<TopBVHNode> bvh_nodes;
@@ -143,7 +143,7 @@ Scene SceneBuilders::glass_dragon()
 
 	s.planes.push_back(Plane(float3(0, 1, 0), 0, Material::checkerboard));
 
-	s.triangles.push_back(get_mesh_from_file("./assets/dragon.obj", 10.f, Material::red_glass)); //of course we trace a literal tree
+	s.triangles.push_back(get_mesh_from_file("./assets/dragon.obj", 10.f, Material::red_glass));
 	s.bvhs.emplace_back(s.triangles[0], true);
 
 	std::vector<TopBVHNode> bvh_nodes;
@@ -151,6 +151,31 @@ Scene SceneBuilders::glass_dragon()
 	s.bvh = TopLevelBVH(bvh_nodes, true);
 
 	s.point_lights.push_back(PointLight(float3(0, 100, 0), float3(1, 1, 1), 500000000.0));
+
+	return s;
+}
+
+Scene SceneBuilders::path_tracing_test()
+{
+	Scene s = Scene();
+
+	s.planes.push_back(Plane(float3(0, 1, 0), 0, Material::checkerboard));
+
+	s.triangles.push_back(get_mesh_from_file("./assets/sheep.obj", 0.1f, Material::white_light));
+	s.triangles.push_back(get_mesh_from_file("./assets/sheep.obj", 0.08f, Material::normal));
+	s.triangles.push_back(get_mesh_from_file("./assets/sheep.obj", 0.08f, Material::glass));
+	s.triangles.push_back(get_mesh_from_file("./assets/sheep.obj", 0.08f, Material::mirror));
+	s.bvhs.emplace_back(s.triangles[0], true);
+	s.bvhs.emplace_back(s.triangles[1], true);
+	s.bvhs.emplace_back(s.triangles[2], true);
+	s.bvhs.emplace_back(s.triangles[3], true);
+
+	std::vector<TopBVHNode> bvh_nodes;
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(1,1,0) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[1], float3(-2,0.9,2) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[2], float3(0,0.9,2) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[3], float3(2,0.9,2) });
+	s.bvh = TopLevelBVH(bvh_nodes, true);
 
 	return s;
 }

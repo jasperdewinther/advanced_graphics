@@ -1,11 +1,12 @@
 #include "precomp.h"
 #include "Materials.h"
 
-MaterialData::MaterialData(std::variant<float3, std::function<float3(float3, float3)>> color, float specularity, float transparent, float refractive_index):
+MaterialData::MaterialData(std::variant<float3, std::function<float3(float3, float3)>> color, float specularity, float transparent, float refractive_index, bool isLight):
     color(color),
     specularity(specularity),
     transparent(transparent),
-    refractive_index(refractive_index)
+    refractive_index(refractive_index),
+    isLight(isLight)
 {
 }
 
