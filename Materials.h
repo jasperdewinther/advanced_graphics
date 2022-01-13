@@ -46,5 +46,5 @@ const MaterialData materials[11] = {
 	MaterialData(float3(1.f,1.f,1.f), 0.0f, 0.f, 1.5f), //glass
 	MaterialData(float3(0.878f,0.066f,0.373f), 0.0f, 0.7f, 1.2f),
 	MaterialData(float3(0.1f,0.6f,0.9f), 0.9f),
-	MaterialData(float3(1.f,1.f,1.f), 0.0f, 1.f,0.f, true),
+	MaterialData(float3(10.f,10.f,10.f), 0.0f, 1.f,0.f, true),
 };

@@ -17,12 +17,13 @@ float RandomFloat(xorshift_state* s)
 float3 CosineWeightedDiffuseReflection(float3 normal, int random_number)
 {
 	xorshift_state rand = { random_number };
+	RandomFloat(&rand);
 	float r0 = RandomFloat(&rand), r1 = RandomFloat(&rand);
 	float r = sqrt(r0);
 	float theta = 2 * PI * r1;
 	float x = r * cosf(theta);
 	float y = r * sinf(theta);
-	float3 dir = float3(x, y, sqrt(1 - r0));
+	float3 dir = normalize(float3(x, y, sqrt(1 - r0)));
 	return  dot(dir, normal) > 0.f ? dir : dir * -1;
 }
 
@@ -63,24 +64,22 @@ float3 Scene::trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) 
 		if (material.transparent < 1.f) {
 			bool leaving = dot(r.d, N) > 0;
 
-			N *= (leaving ? -1.f: 1.f);
-
-			float angle_in = dot(N, -r.d);
+			float angle_in = leaving ? dot(N, r.d) : dot(N, -r.d);
 			float n1 = leaving ? material.refractive_index : 1.f;
 			float n2 = leaving ? 1.f : material.refractive_index;
 			float refractive_ratio = n1 / n2;
 			float k = 1.f - pow(refractive_ratio, 2.f) * (1 - pow(angle_in, 2.f));
 			if (k < 0.f) {
 				// total internal reflection
-				float3 specular_dir = reflect(r.d, N);
-				float3 specular_Ei = trace_scene(Ray(I + specular_dir * epsilon, specular_dir), material.specularity != 0.f ? bounces - 1 : 0, complexity_view, rand); //set bounces to 0 to prevent recursion
+				float3 specular_dir = leaving ? reflect(r.d, -N) : reflect(r.d, N);
+				float3 specular_Ei = trace_scene(Ray(I + specular_dir * epsilon, specular_dir), bounces - 1, complexity_view, rand);
 				return albedo * specular_Ei;
 			}
 			else {
-				float3 new_dir = normalize(refractive_ratio * r.d + normal * (refractive_ratio * angle_in - sqrt(k)));
+				float3 new_dir = normalize(refractive_ratio * r.d + N * (refractive_ratio * angle_in - sqrt(k)));
 
 
-				float angle_out = dot(-N, new_dir);
+				float angle_out = leaving ? dot(N, new_dir) : dot(-N, new_dir);
 
 				float Fr_par = pow((n1 * angle_in - n2 * angle_out) / (n1 * angle_in + n2 * angle_out), 2.f);
 				float Fr_per = pow((n1 * angle_out - n2 * angle_in) / (n1 * angle_out + n2 * angle_in), 2.f);
@@ -88,7 +87,7 @@ float3 Scene::trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) 
 
 
 				if (RandomFloat(&rand_state) < Fr) {
-					float3 specular_dir = reflect(r.d, N);
+					float3 specular_dir = leaving ? reflect(r.d, -N) : reflect(r.d, N);
 					float3 specular_Ei = trace_scene(
 						Ray(I + specular_dir * epsilon, specular_dir), 
 						bounces - 1, 
@@ -99,7 +98,15 @@ float3 Scene::trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) 
 				else {
 					Ray refracted_ray = Ray(I + new_dir * epsilon, new_dir);
 					float3 refraction_Ei = trace_scene(refracted_ray, bounces - 1, complexity_view, rand);
-					return albedo * refraction_Ei;
+					if (leaving) {
+						float3 color = albedo * refraction_Ei;
+						float3 absorbtion = (-albedo * material.transparent * r.t);
+						color.x *= exp(absorbtion.x);
+						color.y *= exp(absorbtion.y);
+						color.z *= exp(absorbtion.z);
+						return color;
+					}
+					return refraction_Ei;
 				}
 			}
 		}
@@ -109,104 +116,14 @@ float3 Scene::trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) 
 			return albedo * specular_Ei;
 		}
 		else {
-			float3 R = DiffuseReflection(N, rand);
-			float3 diffuse_Ei = trace_scene(Ray(I + R * epsilon, R), material.specularity == 0.f ? bounces - 1 : 0, complexity_view, rand) * (dot(N, R));
+			float3 R = CosineWeightedDiffuseReflection(N, rand);
+			//float3 R = DiffuseReflection(N, rand);
 			float3 BRDF = albedo / PI;
-			return PI * 2.0f * BRDF * diffuse_Ei;
+			//float PDF = 1/ (2*PI);
+			float PDF = (dot(N, R)) / PI;
+			float3 diffuse_Ei = trace_scene(Ray(I + R * epsilon, R), material.specularity == 0.f ? bounces - 1 : 0, complexity_view, rand) * (dot(N, R)) / PDF;
+			return BRDF * diffuse_Ei;
 		}
-
-
-		
-
-		
-
-
-	//}
-	//return E;
-		/*
-
-
-	if (max_bounces == 0) {
-		return float3(0, 0, 0);
-	}
-	find_intersection(r);
-
-	if (r.hitptr != nullptr) {
-		float3 hitPos = r.o + r.d * r.t;
-		float3 normal = r.hit_normal;
-		bool leaving = false;
-		if (dot(r.d, normal) > 0) { // if inside object the normal should be reversed
-			normal *= -1;
-			leaving = true;
-		}
-		Material mat = get_material_hitptr(r);
-		MaterialData m = materials[(int)mat];
-
-		float3 material_color = m.get_color(hitPos, normal);
-		float3 refraction_color = float3(0, 0, 0);
-		float3 direct_light = float3(0, 0, 0);
-		float3 specular_color = float3(0, 0, 0);
-
-		float d = 0;
-		float s = 0;
-		float i = 0;
-
-		if (m.transparent < 1.f) {
-			float angle_in = dot(normal, -r.d);
-			float n1 = leaving ? m.refractive_index : 1.f;
-			float n2 = leaving ? 1.f : m.refractive_index;
-			float refractive_ratio = n1/n2;
-			float k = 1.f - pow(refractive_ratio, 2.f) * (1 - pow(angle_in, 2.f));
-			if ( k < 0.f) {
-				// total internal reflection
-				s = 1.0;
-			} else {
-				float3 new_dir = normalize(refractive_ratio * r.d + normal * (refractive_ratio * angle_in - sqrt(k)));
-
-				Ray refracted_ray = Ray(hitPos + new_dir * epsilon, new_dir);
-				refraction_color = trace_scene(refracted_ray, max_bounces - 1, complexity_view);
-				r.complexity += refracted_ray.complexity;
-				float angle_out = dot(-normal, new_dir);
-
-				float Fr_par = pow((n1 * angle_in - n2 * angle_out) / (n1 * angle_in + n2 * angle_out), 2.f);
-				float Fr_per = pow((n1 * angle_out - n2 * angle_in) / (n1 * angle_out + n2 * angle_in), 2.f);
-				float Fr = (Fr_par + Fr_per) / 2.f;
-
-				s = Fr;
-				i = 1.f-Fr;
-			}
-		}
-		else {
-			d = 1 - m.specularity;
-			s = m.specularity;
-		}
-		if (s > 0.f) {
-			float3 new_dir = reflect(r.d, normal);
-			Ray bounced_ray = Ray(hitPos + new_dir* epsilon, new_dir);
-			specular_color = trace_scene(bounced_ray, max_bounces-1, complexity_view);
-			r.complexity += bounced_ray.complexity;
-		}
-		if (d > 0.f) {
-			direct_light = find_direct_light_value(hitPos, normal);
-		}
-		if (complexity_view) {
-			return float3(1, 0, 0) * ((float)r.complexity/100.f);
-		}
-		if (leaving) {
-			float3 color = material_color * ((s * specular_color) + (i * refraction_color));
-			float3 absorbtion = (-material_color * m.transparent * r.t);
-			color.x *= exp(absorbtion.x);
-			color.y *= exp(absorbtion.y);
-			color.z *= exp(absorbtion.z);
-			return color;
-		}
-		return material_color* ((d * direct_light) + (s * specular_color)) + (i * refraction_color);
-	} else if (complexity_view) {
-		return float3(1, 0, 0) * ((float)r.complexity / 100.f);
-	}
-	else {
-		return skycolor;//rainbow sky float3(fabs(r.d.x), fabs(r.d.y), fabs(r.d.z));
-	}*/
 }
 
 void Scene::find_intersection(Ray& r) const {
@@ -219,52 +136,6 @@ void Scene::find_intersection(Ray& r) const {
 	bvh.intersects(r);
 }
 
-float3 Scene::find_direct_light_value(const float3& start_pos, const float3& normal) const {
-	float3 l = float3(0, 0, 0);
-	for (auto& obj : point_lights) {
-		float3 offset_start_pos = (start_pos + normal * epsilon);
-		float3 vec_to_light = obj.pos - offset_start_pos;
-		float3 dir = normalize(vec_to_light);
-
-		Ray r = Ray(offset_start_pos, dir);
-
-		find_intersection(r);
-		if (r.hitptr != nullptr && r.t < sqrt(dot(vec_to_light, vec_to_light))) {
-			continue;
-		}
-		l += obj.color * max(dot(dir, normal), 0.f) * min(obj.calculate_light_intensity(r), 1.f);
-	}
-
-
-	for (auto& obj : directional_lights) {
-		float3 offset_start_pos = (start_pos + normal * epsilon);
-		float3 vec_to_light = obj.pos - offset_start_pos;
-		float3 dir = normalize(vec_to_light);
-		
-		Ray r = Ray(offset_start_pos, dir);
-
-		find_intersection(r);
-		if (r.hitptr != nullptr && r.t < sqrt(dot(vec_to_light, vec_to_light))) {
-			continue;
-		}
-		l += obj.color * max(dot(dir, normal), 0.f) * min(obj.calculate_light_intensity(r), 1.f);
-	}
-
-	for (auto& obj : spot_lights) {
-		float3 offset_start_pos = (start_pos + normal * epsilon);
-		float3 vec_to_light = obj.pos - offset_start_pos;
-		float3 dir = normalize(vec_to_light);
-
-		Ray r = Ray(offset_start_pos, dir);
-
-		find_intersection(r);
-		if (r.hitptr != nullptr && r.t < sqrt(dot(vec_to_light, vec_to_light))) {
-			continue;
-		}
-		l += obj.color * max(dot(dir, normal), 0.f) * min(obj.calculate_light_intensity(r), 1.f);
-	}
-	return l;
-}
 
 void Scene::delete_scene()
 {}

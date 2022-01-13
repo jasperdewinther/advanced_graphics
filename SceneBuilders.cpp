@@ -173,8 +173,8 @@ Scene SceneBuilders::path_tracing_test()
 	std::vector<TopBVHNode> bvh_nodes;
 	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(1,1,0) });
 	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[1], float3(-2,0.9,2) });
-	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[2], float3(0,0.9,2) });
-	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[3], float3(2,0.9,2) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[2], float3(2,0.9,2) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[3], float3(0,0.9,2) });
 	s.bvh = TopLevelBVH(bvh_nodes, true);
 
 	return s;

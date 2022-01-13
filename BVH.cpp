@@ -10,7 +10,7 @@ BVH<Triangle>::BVH(std::vector<Triangle> prims, bool use_SAH):
 	BVH_construct(use_SAH);
 }
 template<>
-BVH<TopBVHNode>::BVH(std::vector<TopBVHNode> prims, bool use_SAH) :
+BVH<TopBVHNode>::BVH(std::vector<TopBVHNode> prims, bool use_SAH):
 	primitives(prims)
 {
 	BVH_construct(use_SAH);
