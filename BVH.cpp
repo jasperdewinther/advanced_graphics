@@ -342,3 +342,28 @@ void intersect_primitive(const TopBVHNode& node, Ray& ray) {
 
 	ray.o += node.pos;
 }
+void intersect_primitive(const Triangle& tri, Ray& ray)
+{
+	//https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+	const float EPSILON = 0.0000001;
+	float3 edge1 = tri.p1 - tri.p0;
+	float3 edge2 = tri.p2 - tri.p0;
+	float3 h = cross(ray.d, edge2);
+	float a = dot(edge1, h);
+	if (a > -EPSILON && a < EPSILON) return;    // This ray is parallel to this triangle.
+	float f = 1.0 / a;
+	float3 s = ray.o - tri.p0;
+	float u = f * dot(s, h);
+	if (u < 0.0 || u > 1.0) return;
+	float3 q = cross(s, edge1);
+	float v = f * dot(ray.d, q);
+	if (v < 0.0 || u + v > 1.0) return;
+	// At this stage we can compute t to find out where the intersection point is on the line.
+	float t = f * dot(edge2, q);
+	if (t > 0.f && ray.t > t) {
+		ray.t = t;
+		ray.hitptr = &tri;
+		ray.complexity += 1;
+		ray.hit_normal = tri.normal;
+	}
+}

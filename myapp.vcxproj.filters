@@ -8,18 +8,6 @@
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="Materials.cpp" />
     <ClCompile Include="Scene.cpp" />
-    <ClCompile Include="Plane.cpp">
-      <Filter>geometry</Filter>
-    </ClCompile>
-    <ClCompile Include="Sphere.cpp">
-      <Filter>geometry</Filter>
-    </ClCompile>
-    <ClCompile Include="Light.cpp">
-      <Filter>lights</Filter>
-    </ClCompile>
-    <ClCompile Include="PointLight.cpp">
-      <Filter>lights</Filter>
-    </ClCompile>
     <ClCompile Include="lib\imgui\backends\imgui_impl_glfw.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
@@ -45,13 +33,6 @@
     <ClCompile Include="Triangle.cpp">
       <Filter>geometry</Filter>
     </ClCompile>
-    <ClCompile Include="RayHelper.cpp" />
-    <ClCompile Include="SpotLight.cpp">
-      <Filter>lights</Filter>
-    </ClCompile>
-    <ClCompile Include="DirectionalLight.cpp">
-      <Filter>lights</Filter>
-    </ClCompile>
     <ClCompile Include="BVH.cpp">
       <Filter>geometry</Filter>
     </ClCompile>
@@ -74,18 +55,6 @@
     <ClInclude Include="Ray.h" />
     <ClInclude Include="Materials.h" />
     <ClInclude Include="Scene.h" />
-    <ClInclude Include="Plane.h">
-      <Filter>geometry</Filter>
-    </ClInclude>
-    <ClInclude Include="Sphere.h">
-      <Filter>geometry</Filter>
-    </ClInclude>
-    <ClInclude Include="Light.h">
-      <Filter>lights</Filter>
-    </ClInclude>
-    <ClInclude Include="PointLight.h">
-      <Filter>lights</Filter>
-    </ClInclude>
     <ClInclude Include="lib\imgui\backends\imgui_impl_glfw.h">
       <Filter>imgui</Filter>
     </ClInclude>
@@ -116,13 +85,6 @@
     <ClInclude Include="Utils.h" />
     <ClInclude Include="Triangle.h">
       <Filter>geometry</Filter>
-    </ClInclude>
-    <ClInclude Include="RayHelper.h" />
-    <ClInclude Include="SpotLight.h">
-      <Filter>lights</Filter>
-    </ClInclude>
-    <ClInclude Include="DirectionalLight.h">
-      <Filter>lights</Filter>
     </ClInclude>
     <ClInclude Include="BVH.h">
       <Filter>geometry</Filter>
@@ -164,9 +126,6 @@
     </Filter>
     <Filter Include="geometry">
       <UniqueIdentifier>{b0a51d3f-0ee0-4eaa-8d5a-3582fb785c74}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="lights">
-      <UniqueIdentifier>{9d4823ad-c586-4770-b7f9-90a5bb92e9e7}</UniqueIdentifier>
     </Filter>
     <Filter Include="imgui">
       <UniqueIdentifier>{cbc5ccd7-b848-44dd-814e-f0cd835c49db}</UniqueIdentifier>

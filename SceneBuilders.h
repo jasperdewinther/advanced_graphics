@@ -3,7 +3,6 @@
 
 namespace SceneBuilders
 {
-	Scene original();
 	Scene bunch_of_objects();
 	Scene billion_triangles_bunnies();
 	Scene billion_triangles_buddhas();

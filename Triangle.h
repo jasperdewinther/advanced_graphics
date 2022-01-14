@@ -1,6 +1,8 @@
 #pragma once
+#include <vector>
+#include <fstream>
 #include "Materials.h"
-#include "Ray.h"
+#include "Utils.h"
 
 class Triangle
 {
@@ -15,7 +17,7 @@ public:
 	float3 get_center() const;
 };
 
-void intersect_primitive(const Triangle& tri, Ray& ray);
+
 std::vector<Triangle> get_mesh_from_file(const std::string& filename, float scalefactor, Material material);
 
 Triangle parse_triangle(const std::string& s, const std::vector<float3>& vertices, const std::vector<float3>& normals, const float& scalefactor, const Material& material);

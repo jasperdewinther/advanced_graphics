@@ -1,9 +1,13 @@
 #pragma once
-#include "Scene.h"
+#include <format>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+
+#include "Scene.h"
 #include "SceneBuilders.h"
+#include "Ray.h"
+#include "Utils.h"
 
 
 

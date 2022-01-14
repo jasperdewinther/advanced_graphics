@@ -9,7 +9,7 @@ Scene::Scene()
 
 }
 
-float RandomFloat(xorshift_state* s)
+float XorRandomFloat(xorshift_state* s)
 {
 	return xorshift32(s) * 2.3283064365387e-10f;
 }
@@ -17,8 +17,9 @@ float RandomFloat(xorshift_state* s)
 float3 CosineWeightedDiffuseReflection(float3 normal, int random_number)
 {
 	xorshift_state rand = { random_number };
-	RandomFloat(&rand);
-	float r0 = RandomFloat(&rand), r1 = RandomFloat(&rand);
+	XorRandomFloat(&rand); //TODO find out why these two initialising randoms are needed for proper distribution
+	XorRandomFloat(&rand);
+	float r1 = XorRandomFloat(&rand), r0 = XorRandomFloat(&rand);
 	float r = sqrt(r0);
 	float theta = 2 * PI * r1;
 	float x = r * cosf(theta);
@@ -32,9 +33,9 @@ float3 DiffuseReflection(float3 normal, int random_number) {
 	float3 direction;
 	while (true) {
 		direction = float3(
-			(RandomFloat(&rand) * 2.f) - 1.f,
-			(RandomFloat(&rand) * 2.f) - 1.f,
-			(RandomFloat(&rand) * 2.f) - 1.f
+			(XorRandomFloat(&rand) * 2.f) - 1.f,
+			(XorRandomFloat(&rand) * 2.f) - 1.f,
+			(XorRandomFloat(&rand) * 2.f) - 1.f
 		);
 		float l = length(direction);
 		direction = normalize(direction);
@@ -55,11 +56,12 @@ float3 Scene::trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) 
 		if (r.hitptr == nullptr) return float3(0,0,0);
 		float3 I = r.o + r.d * r.t;
 		float3 N = r.hit_normal;
-		MaterialData material = get_material_hitptr(r);
-		float3 albedo = material.get_color(I, N);
+		MaterialData material = materials[r.hitptr->m];
+		float3 albedo = material.color;
 		if (material.isLight) return albedo;
 		
 		xorshift_state rand_state = { rand };
+		XorRandomFloat(&rand_state);
 
 		if (material.transparent < 1.f) {
 			bool leaving = dot(r.d, N) > 0;
@@ -78,7 +80,6 @@ float3 Scene::trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) 
 			else {
 				float3 new_dir = normalize(refractive_ratio * r.d + N * (refractive_ratio * angle_in - sqrt(k)));
 
-
 				float angle_out = leaving ? dot(N, new_dir) : dot(-N, new_dir);
 
 				float Fr_par = pow((n1 * angle_in - n2 * angle_out) / (n1 * angle_in + n2 * angle_out), 2.f);
@@ -86,7 +87,7 @@ float3 Scene::trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) 
 				float Fr = (Fr_par + Fr_per) / 2.f;
 
 
-				if (RandomFloat(&rand_state) < Fr) {
+				if (XorRandomFloat(&rand_state) < Fr) {
 					float3 specular_dir = leaving ? reflect(r.d, -N) : reflect(r.d, N);
 					float3 specular_Ei = trace_scene(
 						Ray(I + specular_dir * epsilon, specular_dir), 
@@ -110,9 +111,9 @@ float3 Scene::trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) 
 				}
 			}
 		}
-		if (RandomFloat(&rand_state) < material.specularity) {
+		if (XorRandomFloat(&rand_state) < material.specularity) {
 			float3 specular_dir = reflect(r.d, N);
-			float3 specular_Ei = trace_scene(Ray(I + specular_dir * epsilon, specular_dir), material.specularity != 0.f ? bounces - 1 : 0, complexity_view, rand); //set bounces to 0 to prevent recursion
+			float3 specular_Ei = trace_scene(Ray(I + specular_dir * epsilon, specular_dir),bounces - 1, complexity_view, rand); //set bounces to 0 to prevent recursion
 			return albedo * specular_Ei;
 		}
 		else {
@@ -121,21 +122,11 @@ float3 Scene::trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) 
 			float3 BRDF = albedo / PI;
 			//float PDF = 1/ (2*PI);
 			float PDF = (dot(N, R)) / PI;
-			float3 diffuse_Ei = trace_scene(Ray(I + R * epsilon, R), material.specularity == 0.f ? bounces - 1 : 0, complexity_view, rand) * (dot(N, R)) / PDF;
+			float3 diffuse_Ei = trace_scene(Ray(I + R * epsilon, R), bounces - 1, complexity_view, rand) * (dot(N, R)) / PDF;
 			return BRDF * diffuse_Ei;
 		}
 }
 
 void Scene::find_intersection(Ray& r) const {
-	for (int i = 0; i < spheres.size(); i++) {
-		spheres[i].intersects(r);
-	}
-	for (int i = 0; i < planes.size(); i++) {
-		planes[i].intersects(r);
-	}
 	bvh.intersects(r);
 }
-
-
-void Scene::delete_scene()
-{}

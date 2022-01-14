@@ -1,10 +1,5 @@
 #include "precomp.h"
 #include "myapp.h"
-#include "Ray.h"
-#include <format>
-#include "Sphere.h"
-#include "Plane.h"
-#include "BVH.h"
 
 TheApp* CreateApp() { 
 	Kernel::InitCL();
@@ -23,9 +18,7 @@ void MyApp::Init()
 	virtual_height = screen->height / upscaling;
 
 	printf("ray size: %i\n", sizeof(Ray));
-	printf("ray sphere: %i\n", sizeof(Sphere));
 	printf("ray triangle: %i\n", sizeof(Triangle));
-	printf("ray plane: %i\n", sizeof(Plane));
 	printf("bvh node: %i\n", sizeof(BVHNode));
 	printf("aabb: %i\n", sizeof(aabb));
 }
@@ -106,10 +99,11 @@ void Tmpl8::MyApp::update_rotations() {
 
 void Tmpl8::MyApp::trace_rays()
 {
-	run_multithreaded(nthreads*nthreads, virtual_width, virtual_height, true, [this](int x, int y) {
-			Ray r = rays[x + virtual_width * y];
-			float3 accumulated = s.trace_scene(r, bounces, complexity_view, (accumulation_count+1)*(1+x + virtual_width * y));
-			accumulation_buffer[x + virtual_width * y] += accumulated;
+	run_multithreaded(nthreads * nthreads, virtual_width, virtual_height, true, [this](int x, int y) {
+		Ray r = rays[x + virtual_width * y];
+		xorshift_state rand = { (accumulation_count + 1) * (1 + x + virtual_width * y) };
+		float3 accumulated = s.trace_scene(r, bounces, complexity_view, xorshift32(&rand));
+		accumulation_buffer[x + virtual_width * y] += accumulated;
 		});
 }
 
@@ -226,7 +220,6 @@ void Tmpl8::MyApp::PostDraw()
 
 void MyApp::Shutdown() {
 	printf("total runtime: %f", total_time.elapsed());
-	s.delete_scene();
 	delete[] rays;
 	delete[] accumulation_buffer;
 	delete[] pixel_colors;

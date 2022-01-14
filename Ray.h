@@ -1,8 +1,8 @@
 #pragma once
 #include <limits>
 #include <vector>
-#include <Utils.h>
 #include "AABB.h"
+#include "Triangle.h"
 
 
 class Ray
@@ -13,8 +13,7 @@ public:
 	float3 invDir;
 	float3 hit_normal; //direction when primitive was hit, has to do with rotated objects
 	float t; //distance to closest intersection
-	const void* hitptr; //a pointer to the hit object
-	Primitive p = Primitive::nothing;
+	const Triangle* hitptr; //a pointer to the hit object
 	int complexity = 0;
 
 	Ray(float3 origin, float3 direction);

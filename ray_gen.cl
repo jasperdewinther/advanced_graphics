@@ -61,7 +61,6 @@ __kernel void ray_gen(
     ray_data[(x + width * y) * ray_size + 10] = 1.f/dir.z;
     ray_data[(x + width * y) * ray_size + 16] = 999999999.f; //distance tointersection
     ray_data[(x + width * y) * ray_size + 17] = 0; // hitptr
-    ray_data[(x + width * y) * ray_size + 19] = 0; // 3 equates to nothing primative
-    ray_data[(x + width * y) * ray_size + 20] = 0; // complexity
+    ray_data[(x + width * y) * ray_size + 19] = 0; // complexity
 }
 

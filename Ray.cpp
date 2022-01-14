@@ -1,6 +1,5 @@
 #include "precomp.h"
 #include "Ray.h"
-#include "immintrin.h"
 
 Ray::Ray(float3 origin, float3 direction):
 	o(origin),

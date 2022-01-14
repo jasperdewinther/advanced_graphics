@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "Triangle.h"
+#include "Ray.h"
 
 
 ALIGN(32) struct BVHNode {
@@ -55,3 +56,4 @@ using TopLevelBVH = BVH<TopBVHNode>;
 
 
 void intersect_primitive(const TopBVHNode& node, Ray& ray);
+void intersect_primitive(const Triangle& tri, Ray& ray);
