@@ -110,11 +110,12 @@ void Tmpl8::MyApp::trace_rays()
 void Tmpl8::MyApp::apply_post_processing()
 {
 	run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
-		float3 old_color = accumulation_buffer[x + virtual_width * y];
+		float3 old_color = accumulation_buffer[x + virtual_width * y] / (float)accumulation_count;
+		if (old_color.x > 1.f || old_color.y > 1.f || old_color.z > 1.f) old_color = old_color / max(old_color.x, max(old_color.y, old_color.z));
 		pixel_colors[x + virtual_width * y] = float3(
-			max(min(0.99f, old_color.x / (float)accumulation_count), 0.01f), 
-			max(min(0.99f, old_color.y / (float)accumulation_count), 0.01f), 
-			max(min(0.99f, old_color.z / (float)accumulation_count), 0.01f));
+			max(min(0.99f, old_color.x), 0.01f), 
+			max(min(0.99f, old_color.y), 0.01f), 
+			max(min(0.99f, old_color.z), 0.01f));
 		});
 
 	if (vignetting > 0.01) {

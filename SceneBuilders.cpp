@@ -94,12 +94,40 @@ Scene SceneBuilders::glass_dragon()
 {
 	Scene s = Scene();
 
+	s.triangles.push_back({
+		Triangle(float3(-20, 0, -20),float3(-20, 0, 20), float3(20, 0, -20), float3(0,1,0), Material::white), //y sides
+		Triangle(float3(20, 0, 20),float3(-20, 0, 20), float3(20, 0, -20), float3(0,1,0), Material::white),
+		Triangle(float3(-20, 20, -20),float3(-20, 20, 20), float3(20, 20, -20), float3(0,-1,0), Material::white),
+		Triangle(float3(20, 20, 20),float3(-20, 20, 20), float3(20, 20, -20), float3(0,-1,0), Material::white),
 
-	s.triangles.push_back(get_mesh_from_file("./assets/dragon.obj", 10.f, Material::red_glass));
+		Triangle(float3(-20, 0, -20),float3(-20, 20, -20), float3(20, 0, -20), float3(0,0,1), Material::white), //z sides
+		Triangle(float3(20, 20, -20),float3(-20, 20, -20), float3(20, 0, -20), float3(0,0,1), Material::white),
+		Triangle(float3(-20, 0, 20),float3(-20, 20, 20), float3(20, 0, 20), float3(0,0,-1), Material::white),
+		Triangle(float3(20, 20, 20),float3(-20, 20, 20), float3(20, 0, 20), float3(0,0,-1), Material::white),
+
+		Triangle(float3(-20, 0, -20),float3(-20, 20, -20), float3(-20, 0, 20), float3(1,0,0), Material::white), //x sides
+		Triangle(float3(-20, 20, 20),float3(-20, 20, -20), float3(-20, 0, 20), float3(1,0,0), Material::white),
+		Triangle(float3(20, 0, -20),float3(20, 20, -20), float3(20, 0, 20), float3(-1,0,0), Material::white),
+		Triangle(float3(20, 20, 20),float3(20, 20, -20), float3(20, 0, 20), float3(-1,0,0), Material::white)
+		});
+
+	s.triangles.push_back(get_mesh_from_file("./assets/teapot.obj", 1.f, Material::red_glass));
+	s.triangles.push_back(get_mesh_from_file("./assets/teapot.obj", 1.f, Material::cyan));
+	s.triangles.push_back(get_mesh_from_file("./assets/teapot.obj", 1.f, Material::mirror));
+	s.triangles.push_back(get_mesh_from_file("./assets/teapot.obj", 1.f, Material::white_light));
+
 	s.bvhs.emplace_back(s.triangles[0], true);
+	s.bvhs.emplace_back(s.triangles[1], true);
+	s.bvhs.emplace_back(s.triangles[2], true);
+	s.bvhs.emplace_back(s.triangles[3], true);
+	s.bvhs.emplace_back(s.triangles[4], true);
 
 	std::vector<TopBVHNode> bvh_nodes;
-	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(0,5,0) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(0,0,0) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[1], float3(-3.5,0,2.5) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[2], float3(3.5,0,-2.5) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[3], float3(3.5,0,2.5) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[4], float3(-3.5,0,-2.5) });
 	s.bvh = TopLevelBVH(bvh_nodes, true);
 
 
@@ -110,29 +138,31 @@ Scene SceneBuilders::path_tracing_test()
 {
 	Scene s = Scene();
 
-
-	s.triangles.push_back(get_mesh_from_file("./assets/sheep.obj", 0.1f, Material::white_light));
-	s.triangles.push_back(get_mesh_from_file("./assets/sheep.obj", 0.08f, Material::red));
-	s.triangles.push_back(get_mesh_from_file("./assets/sheep.obj", 0.08f, Material::emerald));
-	s.triangles.push_back(get_mesh_from_file("./assets/sheep.obj", 0.08f, Material::mirror));
 	s.triangles.push_back({
-		Triangle(float3(-20, 0, -20),float3(-20, 0, 20), float3(20, 0, -20), float3(0,1,0), Material::cyan),
-		Triangle(float3(20, 0, 20),float3(-20, 0, 20), float3(20, 0, -20), float3(0,1,0), Material::cyan)
+		Triangle(float3(-20, 0, -20),float3(-20, 0, 20), float3(20, 0, -20), float3(0,1,0), Material::white), //y sides
+		Triangle(float3(20, 0, 20),float3(-20, 0, 20), float3(20, 0, -20), float3(0,1,0), Material::white),
+		//Triangle(float3(-20, 20, -20),float3(-20, 20, 20), float3(20, 20, -20), float3(0,-1,0), Material::white),
+		//Triangle(float3(20, 20, 20),float3(-20, 20, 20), float3(20, 20, -20), float3(0,-1,0), Material::white),
+
+		//Triangle(float3(-20, 0, -20),float3(-20, 20, -20), float3(20, 0, -20), float3(0,0,1), Material::white), //z sides
+		//Triangle(float3(20, 20, -20),float3(-20, 20, -20), float3(20, 0, -20), float3(0,0,1), Material::white),
+		//Triangle(float3(-20, 0, 20),float3(-20, 20, 20), float3(20, 0, 20), float3(0,0,-1), Material::white),
+		//Triangle(float3(20, 20, 20),float3(-20, 20, 20), float3(20, 0, 20), float3(0,0,-1), Material::white),
+		//
+		//Triangle(float3(-20, 0, -20),float3(-20, 20, -20), float3(-20, 0, 20), float3(1,0,0), Material::white), //x sides
+		//Triangle(float3(-20, 20, 20),float3(-20, 20, -20), float3(-20, 0, 20), float3(1,0,0), Material::white),
+		//Triangle(float3(20, 0, -20),float3(20, 20, -20), float3(20, 0, 20), float3(-1,0,0), Material::white),
+		//Triangle(float3(20, 20, 20),float3(20, 20, -20), float3(20, 0, 20), float3(-1,0,0), Material::white)
 		});
 
+	for (int i = 0; i < 8 * 8; i++) s.triangles.push_back(get_mesh_from_file("./assets/sheep.obj", 0.1f, get_random_material()));
 
 	s.bvhs.emplace_back(s.triangles[0], true);
-	s.bvhs.emplace_back(s.triangles[1], true);
-	s.bvhs.emplace_back(s.triangles[2], true);
-	s.bvhs.emplace_back(s.triangles[3], true);
-	s.bvhs.emplace_back(s.triangles[4], true);
+	for (int i = 0; i < 8 * 8; i++) s.bvhs.emplace_back(s.triangles[i+1], true);
 
 	std::vector<TopBVHNode> bvh_nodes;
-	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(1,1,0) });
-	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[1], float3(-2,0.9,2) });
-	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[2], float3(2,0.9,2) });
-	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[3], float3(0,0.9,2) });
-	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[4], float3(0,0,0) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(0,0,0) });
+	for (int i = 0; i < 8 * 8; i++) bvh_nodes.push_back(TopBVHNode{ &s.bvhs[i+1], float3((i%8)*4-16,1,(i / 8) * 4 - 16) });
 	s.bvh = TopLevelBVH(bvh_nodes, true);
 
 	return s;

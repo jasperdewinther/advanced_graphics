@@ -9,3 +9,9 @@ MaterialData::MaterialData(float3 color, float specularity, float transparent, f
     isLight(isLight)
 {
 }
+
+
+Material get_random_material() {
+    float normed = (float)rand() / (float)RAND_MAX;
+    return (Material)(normed * ((float)MATERIALCOUNT+1));
+}
