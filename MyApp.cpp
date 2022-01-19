@@ -16,6 +16,7 @@ void MyApp::Init()
 	ImGui_ImplOpenGL3_Init("#version 130");
 	virtual_width = screen->width / upscaling;
 	virtual_height = screen->height / upscaling;
+	fix_buffers();
 
 	printf("ray size: %i\n", sizeof(Ray));
 	printf("ray triangle: %i\n", sizeof(Triangle));
@@ -27,20 +28,15 @@ void MyApp::Init()
 void MyApp::Tick( float deltaTime )
 {
 	Timer t = Timer();
-	if (rays == nullptr || virtual_width != old_width || virtual_height != old_height) {
-		fix_ray_buffer();
+	if (virtual_width != old_width || virtual_height != old_height) {
+		fix_buffers();
 	}
 	set_progression();
 	float3 camera_pos = float3(sin(scene_progress * PI*2)*distance_to_center, view_height, cos(scene_progress * PI*2)*distance_to_center);
 	float3 camera_dir = normalize(float3(0,2,0) - camera_pos);
-	time_setup = t.elapsed();
-	
-	t.reset();
-	generate_primary_rays(camera_pos, camera_dir, (float)fov, virtual_width, virtual_height, rays, nthreads, ray_gen_kernel.get(), rays_buffer.get(), (int)accumulation_count);
-	time_ray_gen = t.elapsed();
 
 	t.reset();
-	trace_rays();
+	trace_rays(camera_pos, camera_dir);
 	accumulation_count += 1;
 	time_trace = t.elapsed();
 
@@ -53,12 +49,8 @@ void MyApp::Tick( float deltaTime )
 	time_draw = t.elapsed();
 }
 
-void Tmpl8::MyApp::fix_ray_buffer()
+void Tmpl8::MyApp::fix_buffers()
 {
-	delete[] rays;
-	rays = (Ray*)malloc(sizeof(Ray) * virtual_width * virtual_height);
-	rays_buffer = std::make_unique<Buffer>(sizeof(Ray) * virtual_width * virtual_height/4, Buffer::DEFAULT, rays);
-
 	delete[] accumulation_buffer;
 	accumulation_buffer = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
 	reset_image();
@@ -84,26 +76,18 @@ void Tmpl8::MyApp::set_progression()
 		scene_progress += 0.01;
 		scene_progress = scene_progress - (int)scene_progress;
 	}
-	if (rotate_objects) {
-		rotation_progress += 0.1;
-		rotation_progress = rotation_progress - (int)rotation_progress;
-		update_rotations();
-	}
-}
-void Tmpl8::MyApp::update_rotations() {
-	for (auto& bvh : s.bvh.primitives) {
-		bvh.rotation = rotation_progress * 360.f;
-	}
 }
 
 
-void Tmpl8::MyApp::trace_rays()
+void Tmpl8::MyApp::trace_rays(const float3& camerapos, const float3& cameradir)
 {
-	run_multithreaded(nthreads * nthreads, virtual_width, virtual_height, true, [this](int x, int y) {
-		Ray r = rays[x + virtual_width * y];
-		xorshift_state rand = { (accumulation_count + 1) * (1 + x + virtual_width * y) };
-		float3 accumulated = s.trace_scene(r, bounces, complexity_view, xorshift32(&rand));
-		accumulation_buffer[x + virtual_width * y] += accumulated;
+	run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+		temp_image[x + virtual_width * y] = float3(0,0,0);
+		});
+	s.trace_scene(temp_image, virtual_width, virtual_height, camerapos, cameradir, fov, bounces, accumulation_count + 1, nthreads);
+	
+	run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+		accumulation_buffer[x + virtual_width * y] += temp_image[x + virtual_width * y];
 		});
 }
 
@@ -185,18 +169,15 @@ void Tmpl8::MyApp::PostDraw()
 	ImGui::NewFrame();
 	ImGui::Begin("settings");
 	if (ImGui::Checkbox("Multithreading", &multithreading)) nthreads = multithreading ? (int)std::thread::hardware_concurrency() : 1;
-	ImGui::Checkbox("complexity view", &complexity_view);
-	ImGui::Checkbox("rotate objects", &rotate_objects);
 	ImGui::Text("number of threads used: %i", nthreads);
 	if (ImGui::SliderInt("bounces", &bounces, 0, 20)) reset_image();
 	if (ImGui::SliderFloat("scene progress", &scene_progress, 0.f, 1.f)) reset_image();
-	if (ImGui::SliderFloat("rotation progress", &rotation_progress, 0.f, 1.f)) { update_rotations(); reset_image();};
 	if (ImGui::SliderInt("fov", &fov, 1, 180)) reset_image();
 	if (ImGui::SliderFloat("view height", &view_height, 0.1f, 19.9f)) reset_image();
 	if (ImGui::SliderInt("upscaling", &upscaling, 1, 8)) {
 		virtual_width = screen->width / upscaling; 
 		virtual_height = screen->height / upscaling; 
-		fix_ray_buffer(); 
+		fix_buffers(); 
 		reset_image();
 	}
 	ImGui::SliderFloat("gamma correction", &gamma_correction, 0.f, 5.f);
@@ -207,8 +188,6 @@ void Tmpl8::MyApp::PostDraw()
 	ImGui::Text("last frame time: %f", ImGui::GetIO().DeltaTime);
 	float3 colors = pixel_colors[(int)(mousePos.x / upscaling + (mousePos.y / upscaling) * virtual_width)];
 	ImGui::Text("cursor color: %f %f %f",colors.x, colors.y, colors.z);
-	ImGui::Text("setup: %f", time_setup);
-	ImGui::Text("ray gen: %f", time_ray_gen);
 	ImGui::Text("trace: %f", time_trace);
 	ImGui::Text("post_processing: %f", post_processing);
 	ImGui::Text("draw: %f", time_draw);
@@ -221,7 +200,6 @@ void Tmpl8::MyApp::PostDraw()
 
 void MyApp::Shutdown() {
 	printf("total runtime: %f", total_time.elapsed());
-	delete[] rays;
 	delete[] accumulation_buffer;
 	delete[] pixel_colors;
 	delete[] temp_image;

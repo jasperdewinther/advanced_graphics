@@ -59,8 +59,14 @@ __kernel void ray_gen(
     ray_data[(x + width * y) * ray_size + 8] = 1.f/dir.x;
     ray_data[(x + width * y) * ray_size + 9] = 1.f/dir.y;
     ray_data[(x + width * y) * ray_size + 10] = 1.f/dir.z;
-    ray_data[(x + width * y) * ray_size + 16] = 999999999.f; //distance tointersection
-    ray_data[(x + width * y) * ray_size + 17] = 0; // hitptr
-    ray_data[(x + width * y) * ray_size + 19] = 0; // complexity
+    ray_data[(x + width * y) * ray_size + 12] = 999999.f; //distance to intersection
+    ray_data[(x + width * y) * ray_size + 13] = (int)(x + (width * y)); //pixel id
+    ray_data[(x + width * y) * ray_size + 15] = 0; // E
+    ray_data[(x + width * y) * ray_size + 16] = 0;
+    ray_data[(x + width * y) * ray_size + 17] = 0;
+    ray_data[(x + width * y) * ray_size + 20] = 1; // T
+    ray_data[(x + width * y) * ray_size + 21] = 1;
+    ray_data[(x + width * y) * ray_size + 22] = 1;
+    ray_data[(x + width * y) * ray_size + 24] = 0; // hitptr
 }
 

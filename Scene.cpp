@@ -28,26 +28,10 @@ float3 CosineWeightedDiffuseReflection(float3 normal, int random_number)
 	return  dot(dir, normal) > 0.f ? dir : dir * -1;
 }
 
-float3 DiffuseReflection(float3 normal, int random_number) {
-	xorshift_state rand = { random_number };
-	float3 direction;
-	while (true) {
-		direction = float3(
-			(XorRandomFloat(&rand) * 2.f) - 1.f,
-			(XorRandomFloat(&rand) * 2.f) - 1.f,
-			(XorRandomFloat(&rand) * 2.f) - 1.f
-		);
-		float l = length(direction);
-		direction = normalize(direction);
-		if (length(direction) >= l) break;
-	}
-
-	return dot(direction, normal) > 0.f ? direction : direction * -1;
-}
-
 struct transparency_calc_result {
 	bool reflection;
-	Ray r;
+	float3 ray_pos;
+	float3 ray_dir;
 };
 
 transparency_calc_result calc_transparency(const float3& ray_dir, const float3& normal, const float3& intersection, const MaterialData& material, bool leaving, xorshift_state& rand_state) {
@@ -60,7 +44,7 @@ transparency_calc_result calc_transparency(const float3& ray_dir, const float3& 
 	if (k < 0.f) {
 		// total internal reflection
 		float3 specular_dir = leaving ? reflect(ray_dir, normal*-1) : reflect(ray_dir, normal);
-		return transparency_calc_result{ true, Ray(intersection + specular_dir * epsilon, specular_dir) };
+		return transparency_calc_result{ true, intersection + specular_dir * epsilon, specular_dir};
 	}
 	else {
 		float3 new_dir = normalize(refractive_ratio * ray_dir + normal * (refractive_ratio * angle_in - sqrt(k)));
@@ -74,68 +58,139 @@ transparency_calc_result calc_transparency(const float3& ray_dir, const float3& 
 
 		if (XorRandomFloat(&rand_state) < Fr) {
 			float3 specular_dir = leaving ? reflect(ray_dir, normal*-1) : reflect(ray_dir, normal);
-			return transparency_calc_result{ true, Ray(intersection + specular_dir * epsilon, specular_dir) };
+			return transparency_calc_result{ true, intersection + specular_dir * epsilon, specular_dir };
 		}
 		else {
-			return transparency_calc_result{ false, Ray(intersection + new_dir * epsilon, new_dir) };
+			return transparency_calc_result{ false, intersection + new_dir * epsilon, new_dir };
 		}
 	}
 }
 
 
-float3 Scene::trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) const {
+void Scene::trace_scene(
+	float3* screendata,
+	const uint screen_width,
+	const uint screen_height,
+	const float3& camerapos,
+	const float3& camera_direction,
+	const float fov,
+	const uint bounces,
+	const int rand,
+	const uint nthreads
+) {
+	if (rays_buffer.get() == nullptr || rays_buffer.get()->size != sizeof(Ray) * screen_width * screen_height / 4) init_buffers(screen_width, screen_height);
 
-	float3 T = float3(1, 1, 1);
-	float3 E = float3(0, 0, 0);
-	if (bounces == 0) return E;
-	//while (1)
-	//{
-		find_intersection(r);
-		if (r.hitptr == nullptr) return float3(0, 0, 0);
-		MaterialData material = materials[r.hitptr->m];
-		float3 albedo = material.color;
-		if (material.isLight) return albedo;
-		float3 N = r.hit_normal;
-		float3 I = r.o + r.d * r.t;
+	generate(screen_width, screen_height, camerapos, camera_direction, fov, rand, true);
+	ray_count = screen_width * screen_height;
 
-		xorshift_state rand_state = { rand };
-		XorRandomFloat(&rand_state);
+	std::atomic<int> counter;
+	for (int i = 0; i < bounces; i++) {
+		counter = 0;
 
-		if (material.transparent < 1.f) {
-			bool leaving = dot(r.d, N) > 0;
+		// find intersections of all rays
+		run_multithreaded(nthreads, ray_count, 1, false, [this, &counter](int x, int y) {
+			extend(x);
+			});
+		
+		// generate bounced and shadow rays
+		run_multithreaded(nthreads, ray_count, 1, false, [this, &counter, &screendata, &rand, screen_width](int x, int y) {
+			shade(x, rand * (x+screen_width*y), counter);
+			});
+		
+		// draw accumulated energy
+		run_multithreaded(nthreads, ray_count, 1, false, [this, &counter, &screendata, &rand, screen_width](int x, int y) {
+			connect(screendata, x);
+			});
+		ray_count = counter;
+		if (ray_count == 0) break;
+		active_rays = active_rays ? false : true;
+	}
+}
 
-			transparency_calc_result result = calc_transparency(r.d, N, I, material, leaving, rand_state);
-			float3 Ei = trace_scene(result.r, bounces - 1, complexity_view, rand);
-			if (result.reflection) {
-				return albedo * Ei;
-			}
-			else {
-				if (leaving) {
-					float3 color = albedo * Ei;
-					float3 absorbtion = (-albedo * material.transparent * r.t);
-					color.x *= exp(absorbtion.x);
-					color.y *= exp(absorbtion.y);
-					color.z *= exp(absorbtion.z);
-					return color;
-				}
-				return Ei;
-			}
-		}
-		if (XorRandomFloat(&rand_state) < material.specularity) {
-			float3 specular_dir = reflect(r.d, N);
-			float3 specular_Ei = trace_scene(Ray(I + specular_dir * epsilon, specular_dir), bounces - 1, complexity_view, rand);
-			return albedo * specular_Ei;
+void Scene::init_buffers(uint width, uint height){
+	if (rays != nullptr) delete[] rays;
+	if (rays != nullptr) delete[] rays2;
+	rays = (Ray*)malloc(sizeof(Ray) * width * height);
+	rays2 = (Ray*)malloc(sizeof(Ray) * width * height);
+	rays_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays);
+}
+
+void Scene::generate(
+	const uint screen_width,
+	const uint screen_height,
+	const float3& camerapos,
+	const float3& camera_direction,
+	const float fov,
+	const int rand,
+	const bool primary
+) {
+	generate_primary_rays(camerapos, camera_direction, fov, screen_width, screen_height, rays, ray_gen_kernel.get(), rays_buffer.get(), rand);
+}
+void Scene::extend(uint i) {
+	Ray& r = active_rays ? rays2[i] : rays[i];
+	find_intersection(r);
+}
+void Scene::shade(uint i, const int rand, std::atomic<int>& new_ray_index) {
+	Ray& r = active_rays ? rays2[i] : rays[i];
+	if (r.hitptr == nullptr) return;
+	MaterialData material = materials[r.hitptr->m];
+	float3 albedo = material.color;
+	if (material.isLight) {
+		r.E += r.T * albedo;
+		return;
+	};
+	float3 N = r.hitptr->get_normal();
+	float3 I = r.o + r.d * r.t;
+
+	xorshift_state rand_state = { rand };
+	XorRandomFloat(&rand_state);
+
+	if (material.transparent < 1.f) {
+		bool leaving = dot(r.d, N) > 0;
+
+		transparency_calc_result result = calc_transparency(r.d, N, I, material, leaving, rand_state);
+		if (result.reflection) {
+			Ray new_r = Ray(result.ray_pos, result.ray_dir, r.pixel_id, r.E + r.T * albedo, r.T * albedo); // todo check E and T calculations
+			if (active_rays) rays[new_ray_index++] = new_r; else rays2[new_ray_index++] = new_r;
+			return;
 		}
 		else {
-			float3 R = CosineWeightedDiffuseReflection(N, rand);
-			//float3 R = DiffuseReflection(N, rand);
-			float3 BRDF = albedo / PI;
-			//float PDF = 1/ (2*PI);
-			float PDF = (dot(N, R)) / PI;
-			float3 diffuse_Ei = trace_scene(Ray(I + R * epsilon, R), bounces - 1, complexity_view, rand) * (dot(N, R)) / PDF;
-			return BRDF * diffuse_Ei;
+			if (leaving) {
+				float3 color = albedo * r.T;
+				float3 absorbtion = (-albedo * material.transparent * r.t);
+				color.x *= exp(absorbtion.x);
+				color.y *= exp(absorbtion.y);
+				color.z *= exp(absorbtion.z);
+				Ray new_r = Ray(result.ray_pos, result.ray_dir, r.pixel_id, r.E + r.T * color, r.T * color);
+				if (active_rays) rays[new_ray_index++] = new_r; else rays2[new_ray_index++] = new_r;
+				return;
+			}
+			Ray new_r = Ray(result.ray_pos, result.ray_dir, r.pixel_id, r.E, r.T);
+			if (active_rays) rays[new_ray_index++] = new_r; else rays2[new_ray_index++] = new_r;
+			return;
 		}
-	//}
+	}
+	if (XorRandomFloat(&rand_state) < material.specularity) {
+		float3 specular_dir = reflect(r.d, N);
+		Ray new_r = Ray(I + specular_dir * epsilon, specular_dir, r.pixel_id, r.E + r.T * albedo, r.T * albedo); // todo check E and T calculations
+		if (active_rays) rays[new_ray_index++] = new_r; else rays2[new_ray_index++] = new_r;
+		return;
+	}
+	else {
+		float3 R = CosineWeightedDiffuseReflection(N, rand);
+		float3 BRDF = albedo / PI;
+		float PDF = dot(N, R) / PI;
+		Ray new_r = Ray(I + R * epsilon, R, r.pixel_id, r.E + r.T * (BRDF / PDF), r.T * (BRDF/PDF)); // todo check E and T calculations
+		if (active_rays) rays[new_ray_index++] = new_r; else rays2[new_ray_index++] = new_r;
+		return;
+	}
+}
+
+void Scene::connect(float3* screendata, uint i){
+	Ray& r = active_rays ? rays2[i] : rays[i];
+	Ray& r2 = active_rays ? rays2[i+1] : rays[i+1];
+	Ray& r3 = active_rays ? rays2[i + 2] : rays[i + 2];
+	screendata[r.pixel_id] += r.E;
 }
 
 void Scene::find_intersection(Ray& r) const {

@@ -34,7 +34,7 @@ private:
 	int nthreads = std::thread::hardware_concurrency();
 	int old_width;
 	int old_height;
-	Ray* rays;
+
 	float3* accumulation_buffer;
 	float3* pixel_colors;
 	float3* temp_image; // used for post processing when a temporary image is required
@@ -43,10 +43,7 @@ private:
 	int virtual_height;
 	uint accumulation_count = 0;
 
-	std::unique_ptr<Kernel> ray_gen_kernel = std::make_unique<Kernel>((char*)"ray_gen.cl", (char*)"ray_gen");
-	std::unique_ptr<Buffer> rays_buffer;
-
-	float time_setup, time_ray_gen, time_trace, post_processing, time_draw; //performance timers
+	float time_trace, post_processing, time_draw; //performance timers
 
 	//all imgui settings
 	bool multithreading = true;
@@ -60,20 +57,16 @@ private:
 	float vignetting = 0.0;
 	int chromatic_aberration = 0;
 	float distance_to_center = 10.f;
-	bool complexity_view = false;
-	bool rotate_objects = false;
-	float rotation_progress = 0.f;
 	 
 
 
 
-	void fix_ray_buffer();
+	void fix_buffers();
 	void set_progression();
-	void trace_rays();
+	void trace_rays(const float3& camerapos, const float3& cameradir);
 	void apply_post_processing();
 	void render_pixels();
 
-	void update_rotations();
 	void reset_image();
 	uint color_to_uint(const float3& color);
 

@@ -275,7 +275,6 @@ void BVH<T>::instantiated_intersect(Ray& r) const {
 	// more from slides
 	float2 result = r.intersects_aabb(n->bounds);
 	if (result.x > result.y || result.x > r.t) return;
-	r.complexity += 1;
 	intersect_internal(r);
 }
 
@@ -289,7 +288,6 @@ void BVH<T>::intersect_internal(Ray& r, int node_index) const { //assumes ray in
 	}
 	else
 	{
-		r.complexity += 1;
 		float2 result_left = r.intersects_aabb(pool[n->leftFirst].bounds);
 		float2 result_right = r.intersects_aabb(pool[n->leftFirst + 1].bounds);
 		if (result_left.x < result_left.y && result_left.x < r.t) {
@@ -316,30 +314,10 @@ void BVH<T>::intersect_internal(Ray& r, int node_index) const { //assumes ray in
 }
 
 void intersect_primitive(const TopBVHNode& node, Ray& ray) {
-	ray.complexity += 1;
 	ray.o -= node.pos;
-	if (node.rotation > 0.01) { //perform all rotations on the ray
-		ray.o -= node.obj->pool[0].bounds.get_center();
-		ray.o = rotate(ray.o, -node.rotation * (PI / 180.f));
-		ray.o += node.obj->pool[0].bounds.get_center();
 
-		ray.d = rotate(ray.d, -node.rotation * (PI / 180.f));
-		ray.invDir = 1 / ray.d;
-		const void* old_hit = ray.hitptr;
-		node.obj->intersects(ray);
-		if (ray.hitptr != old_hit) ray.hit_normal = rotate(ray.hit_normal, node.rotation * (PI / 180.f));
-		ray.d = rotate(ray.d, node.rotation * (PI / 180.f));
-		ray.invDir = 1 / ray.d;
-
-		ray.o -= node.obj->pool[0].bounds.get_center();
-		ray.o = rotate(ray.o, node.rotation * (PI / 180.f));
-		ray.o += node.obj->pool[0].bounds.get_center();
-	}
-	else {
-		node.obj->intersects(ray);
-	}
+	node.obj->intersects(ray);
 	
-
 	ray.o += node.pos;
 }
 void intersect_primitive(const Triangle& tri, Ray& ray)
@@ -363,7 +341,5 @@ void intersect_primitive(const Triangle& tri, Ray& ray)
 	if (t > 0.f && ray.t > t) {
 		ray.t = t;
 		ray.hitptr = &tri;
-		ray.complexity += 1;
-		ray.hit_normal = tri.normal;
 	}
 }
