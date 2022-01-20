@@ -87,20 +87,12 @@ void Scene::trace_scene(
 	for (int i = 0; i < bounces; i++) {
 		counter = 0;
 
-		// find intersections of all rays
-		run_multithreaded(nthreads, ray_count, 1, false, [this, &counter](int x, int y) {
+		run_multithreaded(nthreads, ray_count, 1, false, [this, &counter, &screendata, &rand, screen_width, &screen_height](int x, int y) {
 			extend(x);
-			});
-		
-		// generate bounced and shadow rays
-		run_multithreaded(nthreads, ray_count, 1, false, [this, &counter, &screendata, &rand, screen_width](int x, int y) {
-			shade(x, rand * (x+screen_width*y), counter);
-			});
-		
-		// draw accumulated energy
-		run_multithreaded(nthreads, ray_count, 1, false, [this, &counter, &screendata, &rand, screen_width](int x, int y) {
+			shade(x, rand*(screen_width * screen_height) + (x + screen_width * y), counter);
 			connect(screendata, x);
 			});
+		
 		ray_count = counter;
 		if (ray_count == 0) break;
 		active_rays = active_rays ? false : true;
@@ -180,7 +172,7 @@ void Scene::shade(uint i, const int rand, std::atomic<int>& new_ray_index) {
 		float3 R = CosineWeightedDiffuseReflection(N, rand);
 		float3 BRDF = albedo / PI;
 		float PDF = dot(N, R) / PI;
-		Ray new_r = Ray(I + R * epsilon, R, r.pixel_id, r.E + r.T * (BRDF / PDF), r.T * (BRDF/PDF)); // todo check E and T calculations
+		Ray new_r = Ray(I + R * epsilon, R, r.pixel_id, r.E /* + r.T * BRDF * (dot(N, R) / PDF)*/, r.T * BRDF * (dot(N, R) / PDF)); // todo check E and T calculations
 		if (active_rays) rays[new_ray_index++] = new_r; else rays2[new_ray_index++] = new_r;
 		return;
 	}
