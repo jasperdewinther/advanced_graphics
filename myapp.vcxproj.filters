@@ -107,13 +107,16 @@
     <None Include="ray_gen.cl">
       <Filter>cl</Filter>
     </None>
-    <None Include="trace_rays.cl">
+    <None Include="ray_extend.cl">
       <Filter>cl</Filter>
     </None>
-    <None Include="handle_hits.cl">
+    <None Include="ray_connect.cl">
       <Filter>cl</Filter>
     </None>
-    <None Include="trace_shadows.cl">
+    <None Include="ray_shade.cl">
+      <Filter>cl</Filter>
+    </None>
+    <None Include="common.cl">
       <Filter>cl</Filter>
     </None>
   </ItemGroup>

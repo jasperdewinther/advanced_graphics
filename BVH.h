@@ -27,6 +27,8 @@ public:
 	std::unique_ptr<BVHNode[]> pool;
 	std::vector<T> primitives;
 	std::unique_ptr<float3[]> centers;
+	uint elements_of_pool_used;
+	uint primitive_count;
 	
 
 	BVH() = default;
@@ -49,7 +51,6 @@ private:
 struct TopBVHNode {
 	BVH<Triangle>* obj;
 	float3 pos;
-	float rotation = 0.f;
 };
 
 using TopLevelBVH = BVH<TopBVHNode>;

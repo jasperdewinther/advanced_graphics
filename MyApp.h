@@ -37,6 +37,7 @@ private:
 
 	float3* accumulation_buffer;
 	float3* pixel_colors;
+	float3* accumulation_buffer_2nd;
 	float3* temp_image; // used for post processing when a temporary image is required
 	ImGuiContext* ctx;
 	int virtual_width;
@@ -57,6 +58,8 @@ private:
 	float vignetting = 0.0;
 	int chromatic_aberration = 0;
 	float distance_to_center = 10.f;
+	float3 color_counter = float3(0,0,0);
+
 	 
 
 

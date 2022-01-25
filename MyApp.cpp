@@ -53,6 +53,9 @@ void Tmpl8::MyApp::fix_buffers()
 {
 	delete[] accumulation_buffer;
 	accumulation_buffer = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
+
+	delete[] accumulation_buffer_2nd;
+	accumulation_buffer_2nd = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
 	reset_image();
 
 	delete[] pixel_colors;
@@ -67,6 +70,7 @@ void Tmpl8::MyApp::fix_buffers()
 
 void Tmpl8::MyApp::reset_image() {
 	for (int i = 0; i < virtual_width * virtual_height; i++) accumulation_buffer[i] = float3(0, 0, 0);
+	for (int i = 0; i < virtual_width * virtual_height; i++) accumulation_buffer_2nd[i] = float3(0, 0, 0);
 	accumulation_count = 0;
 }
 
@@ -79,16 +83,18 @@ void Tmpl8::MyApp::set_progression()
 }
 
 
-void Tmpl8::MyApp::trace_rays(const float3& camerapos, const float3& cameradir)
-{
+void Tmpl8::MyApp::trace_rays(const float3& camerapos, const float3& cameradir){
+
 	run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
-		temp_image[x + virtual_width * y] = float3(0,0,0);
+		temp_image[x + virtual_width * y] = float3(0, 0, 0);
 		});
+
 	s.trace_scene(temp_image, virtual_width, virtual_height, camerapos, cameradir, fov, bounces, accumulation_count + 1, nthreads);
-	
+
 	run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
 		accumulation_buffer[x + virtual_width * y] += temp_image[x + virtual_width * y];
 		});
+
 }
 
 void Tmpl8::MyApp::apply_post_processing()
@@ -100,6 +106,12 @@ void Tmpl8::MyApp::apply_post_processing()
 			max(min(0.99f, old_color.x), 0.01f), 
 			max(min(0.99f, old_color.y), 0.01f), 
 			max(min(0.99f, old_color.z), 0.01f));
+		});
+
+	color_counter = float3(0, 0, 0);
+	run_multithreaded(1, virtual_width, virtual_height, false, [this](int x, int y) {
+		float3 old_color = accumulation_buffer[x + virtual_width * y] / (float)accumulation_count;
+		color_counter += old_color;
 		});
 
 	if (vignetting > 0.01) {
@@ -192,6 +204,9 @@ void Tmpl8::MyApp::PostDraw()
 	ImGui::Text("post_processing: %f", post_processing);
 	ImGui::Text("draw: %f", time_draw);
 	ImGui::Text("accumulated: %i", accumulation_count);
+	ImGui::Text("r: %f", color_counter.x);
+	ImGui::Text("g: %f", color_counter.y);
+	ImGui::Text("b: %f", color_counter.z);
 
 	ImGui::End();
 	ImGui::Render();

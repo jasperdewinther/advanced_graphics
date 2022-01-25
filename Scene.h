@@ -9,10 +9,17 @@ struct DoubleBool {
 	bool second;
 };
 
+struct TopBVHNodeScene {
+	float3 pos;
+	uint obj_index;
+};
+
+
 class Scene
 {
 public:
 	std::vector<std::vector<Triangle>> triangles;
+	
 	std::vector<BVH<Triangle>> bvhs;
 	TopLevelBVH bvh;
 
@@ -21,6 +28,7 @@ public:
 	int shadowray_count = 0;
 	Ray* rays = nullptr;
 	Ray* rays2 = nullptr;
+	float3* temp_image = nullptr;
 	std::unique_ptr<Buffer> rays_buffer;
 	std::unique_ptr<Kernel> ray_gen_kernel = std::make_unique<Kernel>((char*)"ray_gen.cl", (char*)"ray_gen");
 
@@ -38,7 +46,17 @@ public:
 		const int rand,
 		const uint nthreads
 	);
+	float3 trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) const;
 private:
+	std::vector<BVHNode> m_top_bvh_nodes;
+	std::vector<TopBVHNodeScene> m_top_leaves;
+	std::vector<uint> m_top_indices;
+	std::vector<BVHNode> m_bvh_nodes;
+	std::vector<uint> m_model_primitives_starts;
+	std::vector<uint> m_model_bvh_starts;
+	std::vector<Triangle> m_triangles;
+	std::vector<uint> m_indices;
+
 	void init_buffers(uint width, uint height);
 	void generate(
 		const uint screen_width,
@@ -53,5 +71,10 @@ private:
 	void shade(uint i, const int rand, std::atomic<int>& new_ray_index);
 	void connect(float3* screendata, uint i);
 	void find_intersection(Ray& r) const;
+
+	void intersect(Ray& r) const;
+	void intersect_top(Ray& r, int node_index = 0) const;
+	void intersect_bot(Ray& r, int obj_index, int node_index = 0) const;
+	void intersect_triangle(const Triangle& tri, Ray& ray) const;
 };
 

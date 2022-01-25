@@ -1,20 +1,9 @@
+#include "common.cl"
 
-struct xorshift_state {
-	uint a;
-};
 
-uint xorshift32(struct xorshift_state* state)
-{
-	/* Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs" */
-	uint x = state->a;
-	x ^= x << 13;
-	x ^= x >> 17;
-	x ^= x << 5;
-	return state->a = x;
-}
 
 __kernel void ray_gen( 
-    __global float* ray_data, 
+    __global struct Ray* ray_data, 
     int width, 
     int height, 
     float upx, 
@@ -51,25 +40,18 @@ __kernel void ray_gen(
 	float3 dir = (float3)(dirx, diry, dirz);
 	dir = normalize(dir);
     uint pixel_index = x + (width * y);
-	ray_data[pixel_index * ray_size] = cameraposx;
-    ray_data[pixel_index * ray_size + 1] = cameraposy;
-    ray_data[pixel_index * ray_size + 2] = cameraposz;
-    ray_data[pixel_index * ray_size + 4] = dir.x;
-    ray_data[pixel_index * ray_size + 5] = dir.y;
-    ray_data[pixel_index * ray_size + 6] = dir.z;
-    ray_data[pixel_index * ray_size + 8] = 1.f/dir.x;
-    ray_data[pixel_index * ray_size + 9] = 1.f/dir.y;
-    ray_data[pixel_index * ray_size + 10] = 1.f/dir.z;
-    ray_data[pixel_index * ray_size + 11] = 0;
-    ray_data[pixel_index * ray_size + 12] = 999999.f; //distance to intersection
-    ray_data[pixel_index * ray_size + 13] = *((float*)&(pixel_index)); //pixel id
-    ray_data[pixel_index * ray_size + 14] = 0;
-    ray_data[pixel_index * ray_size + 15] = 0; // E
-    ray_data[pixel_index * ray_size + 16] = 0;
-    ray_data[pixel_index * ray_size + 17] = 0;
-    ray_data[pixel_index * ray_size + 20] = 1; // T
-    ray_data[pixel_index * ray_size + 21] = 1;
-    ray_data[pixel_index * ray_size + 22] = 1;
-    ray_data[pixel_index * ray_size + 24] = 0; // hitptr
+    struct Ray r = {
+        .o = {cameraposx, cameraposy, cameraposz, 0},
+        .d = {dir.x, dir.y, dir.z, 0},
+        .invDir = {1.f/dir.x, 1.f/dir.y, 1.f/dir.z, 0},
+        .t = 999999.f,
+        .pixel_id = pixel_index,
+        .E = {0.f, 0.f, 0.f, 0.f},
+        .T = {1.f, 1.f, 1.f, 1.f},
+        .hitptr = 0,
+    };
+
+    ray_data[pixel_index] = r;
+
 }
 

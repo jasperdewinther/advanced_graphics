@@ -21,7 +21,7 @@
   <PropertyGroup Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -173,12 +173,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="cl\kernels.cl" />
-    <None Include="handle_hits.cl" />
+    <None Include="common.cl" />
+    <None Include="ray_connect.cl" />
     <None Include="ray_gen.cl" />
     <None Include="README.md" />
     <None Include="template\LICENSE" />
-    <None Include="trace_rays.cl" />
-    <None Include="trace_shadows.cl" />
+    <None Include="ray_extend.cl" />
+    <None Include="ray_shade.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -41,6 +41,8 @@ void BVH<T>::BVH_construct(bool use_SAH)
 	printf("%i primitives\n", primitives.size());
 	printf("max depth: %i\n", count_depth(&pool[0]));
 	printf("node count: %i\n", count_nodes(&pool[0]));
+	elements_of_pool_used = count_nodes(root);
+	primitive_count = N;
 }
 
 template<>
@@ -88,32 +90,10 @@ void BVH<T>::subdivide(BVHNode* parent, std::atomic<uint>& poolPtr, uint indices
 	right->count = parent->count - left->count;
 	right->bounds = CalculateBounds(pivot, right->count);
 
-	if (left->count > 100000000|| right->count > 100000000000) {
-		printf("left: %i right %i\n", left->count, right->count);
-		std::thread t1;
-		std::thread t2;
-		bool b1 = false;
-		bool b2 = false;
-		if (left->count > 10000000000) {
-			b1 = true;
-			t1 = std::thread(&BVH::subdivide, this, left, std::ref(poolPtr), indices_start, use_SAH);
-		}
-		if (right->count > 10000000000) {
-			b2 = true;
-			t2 = std::thread(&BVH::subdivide, this, right, std::ref(poolPtr), pivot, use_SAH);
-		}
-		if (b1) {
-			t1.join();
-		}
-		if (b2) {
-			t2.join();
-		}
-		printf("done with i %i with parent count %i\n", indices_start, parent->count);
-	}
-	if (left->count <= 10000000000) subdivide(left, poolPtr, indices_start, use_SAH);
-	if (right->count <= 10000000000) subdivide(right, poolPtr, pivot, use_SAH);
+	subdivide(left, poolPtr, indices_start, use_SAH);
+	subdivide(right, poolPtr, pivot, use_SAH);
 	parent->count = 0;
-
+	
 }
 
 template<typename T>
