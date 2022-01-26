@@ -227,7 +227,6 @@ void Scene::connect(float3* screendata, uint i){
 
 void Scene::find_intersection(Ray& r) const {
 	intersect(r);
-	//bvh.intersects(r);
 }
 
 void Scene::intersect(Ray& r) const {
@@ -240,6 +239,68 @@ void Scene::intersect(Ray& r) const {
 
 
 void Scene::intersect_top(Ray& r, int node_index) const { //assumes ray intersects
+	//https://www.sci.utah.edu/~wald/Publications/2011/StackFree/sccg2011.pdf
+	const BVHNode* last = nullptr;
+	const BVHNode* current = &m_top_bvh_nodes[0];
+	const BVHNode* near_node;
+	const BVHNode* far_node;
+	for (int step = 0; step < 10; step++) {
+
+		float dist_left = abs(m_top_bvh_nodes[current->leftFirst].bounds.minx - r.o.x) + 
+			abs(m_top_bvh_nodes[current->leftFirst].bounds.miny - r.o.y) + 
+			abs(m_top_bvh_nodes[current->leftFirst].bounds.minz - r.o.z);
+		float dist_right = abs(m_top_bvh_nodes[current->leftFirst + 1].bounds.minx - r.o.x) +
+			abs(m_top_bvh_nodes[current->leftFirst + 1].bounds.miny - r.o.y) +
+			abs(m_top_bvh_nodes[current->leftFirst + 1].bounds.minz - r.o.z);
+		
+		if (dist_left < dist_right) {
+			near_node = &m_top_bvh_nodes[current->leftFirst];
+			far_node = &m_top_bvh_nodes[current->leftFirst + 1];
+		}
+		else {
+			near_node = &m_top_bvh_nodes[current->leftFirst + 1];
+			far_node = &m_top_bvh_nodes[current->leftFirst];
+		}
+		if (last == far_node) { // traverse up
+			if (current->parent == -1) return;
+			last = current;
+			current = &m_top_bvh_nodes[current->parent];
+			continue;
+		}
+
+		const BVHNode* try_child = (current->parent == -1 || last == &m_top_bvh_nodes[current->parent]) ? near_node : far_node;
+
+		float2 intersection_test_result = r.intersects_aabb(current->bounds);
+		if (intersection_test_result.x < intersection_test_result.y) { // if intersection is found
+			if (current->count) {
+				for (int i = current->leftFirst; i < current->leftFirst + current->count; i++) {
+					TopBVHNodeScene node = m_top_leaves[m_top_indices[i]];
+					r.o -= node.pos;
+					intersect_bot(r, node.obj_index);
+					r.o += node.pos;
+				}
+			}
+			else { // enter node
+				last = current;
+				current = try_child;
+			}
+
+		}
+		else {
+			if (try_child == near_node) { // next is far
+				last = near_node;
+			}
+			else { // go up
+				if (current->parent == -1) return;
+				last = current;
+				current = &m_top_bvh_nodes[current->parent];
+			}
+		}
+	}
+	return;
+
+
+
 	const BVHNode* n = &m_top_bvh_nodes[node_index];
 	if (n->count) {
 		for (int i = n->leftFirst; i < n->leftFirst + n->count; i++) {

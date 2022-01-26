@@ -36,6 +36,7 @@ void BVH<T>::BVH_construct(bool use_SAH)
 	root->leftFirst = 0;
 	root->count = N;
 	root->bounds = CalculateBounds(0, N);
+	root->parent = -1;
 	subdivide(root, poolPtr, 0, use_SAH);
 	printf("built bvh in %f seconds\n", t.elapsed());
 	printf("%i primitives\n", primitives.size());
@@ -92,6 +93,8 @@ void BVH<T>::subdivide(BVHNode* parent, std::atomic<uint>& poolPtr, uint indices
 
 	subdivide(left, poolPtr, indices_start, use_SAH);
 	subdivide(right, poolPtr, pivot, use_SAH);
+	left->parent = parent - pool.get();
+	right->parent = parent - pool.get();
 	parent->count = 0;
 	
 }
@@ -237,89 +240,4 @@ AABB BVH<TopBVHNode>::CalculateBounds(uint first, uint amount) const
 	}
 
 	return AABB(minx - bb_epsilon, miny - bb_epsilon, minz - bb_epsilon, maxx + bb_epsilon, maxy + bb_epsilon, maxz + bb_epsilon);
-}
-
-
-template<>
-void BVH<Triangle>::intersects(Ray& r) const {
-	instantiated_intersect(r);
-}
-template<>
-void BVH<TopBVHNode>::intersects(Ray& r) const {
-	instantiated_intersect(r);
-}
-
-template<typename T>
-void BVH<T>::instantiated_intersect(Ray& r) const {
-	BVHNode* n = &pool[0];
-	// more from slides
-	float2 result = r.intersects_aabb(n->bounds);
-	if (result.x > result.y || result.x > r.t) return;
-	intersect_internal(r);
-}
-
-template<typename T>
-void BVH<T>::intersect_internal(Ray& r, int node_index) const { //assumes ray intersects
-	BVHNode* n = &pool[node_index];
-	if (n->count) {
-		for (int i = n->leftFirst; i < n->leftFirst + n->count; i++) {
-			intersect_primitive(primitives[indices[i]], r);
-		}
-	}
-	else
-	{
-		float2 result_left = r.intersects_aabb(pool[n->leftFirst].bounds);
-		float2 result_right = r.intersects_aabb(pool[n->leftFirst + 1].bounds);
-		if (result_left.x < result_left.y && result_left.x < r.t) {
-			if (result_right.x < result_right.y && result_right.x < r.t) {
-				if (result_left.x < result_right.x) {
-					intersect_internal(r, n->leftFirst);
-					if (result_right.x < r.t) {
-						intersect_internal(r, n->leftFirst + 1);
-					}
-				}
-				else {
-					intersect_internal(r, n->leftFirst + 1);
-					if (result_left.x < r.t) {
-						intersect_internal(r, n->leftFirst);
-					}
-				}
-			}
-			else {
-				intersect_internal(r, n->leftFirst);
-			}
-		}
-		else if (result_right.x <= result_right.y && result_right.x < r.t) intersect_internal(r, n->leftFirst + 1);
-	}
-}
-
-void intersect_primitive(const TopBVHNode& node, Ray& ray) {
-	ray.o -= node.pos;
-
-	node.obj->intersects(ray);
-	
-	ray.o += node.pos;
-}
-void intersect_primitive(const Triangle& tri, Ray& ray)
-{
-	//https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-	const float EPSILON = 0.0000001;
-	float3 edge1 = tri.p1 - tri.p0;
-	float3 edge2 = tri.p2 - tri.p0;
-	float3 h = cross(ray.d, edge2);
-	float a = dot(edge1, h);
-	if (a > -EPSILON && a < EPSILON) return;    // This ray is parallel to this triangle.
-	float f = 1.0 / a;
-	float3 s = ray.o - tri.p0;
-	float u = f * dot(s, h);
-	if (u < 0.0 || u > 1.0) return;
-	float3 q = cross(s, edge1);
-	float v = f * dot(ray.d, q);
-	if (v < 0.0 || u + v > 1.0) return;
-	// At this stage we can compute t to find out where the intersection point is on the line.
-	float t = f * dot(edge2, q);
-	if (t > 0.f && ray.t > t) {
-		ray.t = t;
-		ray.hitptr = &tri;
-	}
 }

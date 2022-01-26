@@ -4,13 +4,12 @@
 #include "Ray.h"
 
 
-ALIGN(32) struct BVHNode {
+struct BVHNode {
 	AABB bounds;
 	int leftFirst;
 	int count;
+	int parent;
 };
-
-
 
 struct bb_intersection_results {
 	float2 first;
@@ -33,8 +32,6 @@ public:
 
 	BVH() = default;
 	BVH(std::vector<T> prims, bool use_SAH);
-
-	void intersects(Ray& r) const;
 private:
 	void BVH_construct(bool use_SAH);
 	void set_centers(uint N);
@@ -43,8 +40,6 @@ private:
 	void subdivide(BVHNode* parent, std::atomic<uint>& poolPtr, uint indices_start, bool use_SAH);
 	int partition(const AABB& bb, uint start, uint count, bool use_SAH);
 	int partition_shuffle(int axis, float pos, uint start, uint count);
-	void instantiated_intersect(Ray& r) const;
-	void intersect_internal(Ray& r, int node_index = 0) const;
 	AABB CalculateBounds(uint first, uint amount) const;
 };
 
@@ -54,7 +49,3 @@ struct TopBVHNode {
 };
 
 using TopLevelBVH = BVH<TopBVHNode>;
-
-
-void intersect_primitive(const TopBVHNode& node, Ray& ray);
-void intersect_primitive(const Triangle& tri, Ray& ray);
