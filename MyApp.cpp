@@ -85,13 +85,13 @@ void Tmpl8::MyApp::set_progression()
 
 void Tmpl8::MyApp::trace_rays(const float3& camerapos, const float3& cameradir){
 
-	run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+	run_multithreaded(nthreads, virtual_width, virtual_height, [this](int x, int y) {
 		temp_image[x + virtual_width * y] = float3(0, 0, 0);
 		});
 
 	s.trace_scene(temp_image, virtual_width, virtual_height, camerapos, cameradir, fov, bounces, accumulation_count + 1, nthreads);
 
-	run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+	run_multithreaded(nthreads, virtual_width, virtual_height, [this](int x, int y) {
 		accumulation_buffer[x + virtual_width * y] += temp_image[x + virtual_width * y];
 		});
 
@@ -99,7 +99,7 @@ void Tmpl8::MyApp::trace_rays(const float3& camerapos, const float3& cameradir){
 
 void Tmpl8::MyApp::apply_post_processing()
 {
-	run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+	run_multithreaded(nthreads, virtual_width, virtual_height, [this](int x, int y) {
 		float3 old_color = accumulation_buffer[x + virtual_width * y] / (float)accumulation_count;
 		if (old_color.x > 1.f || old_color.y > 1.f || old_color.z > 1.f) old_color = old_color / max(old_color.x, max(old_color.y, old_color.z));
 		pixel_colors[x + virtual_width * y] = float3(
@@ -109,13 +109,13 @@ void Tmpl8::MyApp::apply_post_processing()
 		});
 
 	color_counter = float3(0, 0, 0);
-	run_multithreaded(1, virtual_width, virtual_height, false, [this](int x, int y) {
+	run_multithreaded(1, virtual_width, virtual_height, [this](int x, int y) {
 		float3 old_color = accumulation_buffer[x + virtual_width * y] / (float)accumulation_count;
 		color_counter += old_color;
 		});
 
 	if (vignetting > 0.01) {
-		run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+		run_multithreaded(nthreads, virtual_width, virtual_height, [this](int x, int y) {
 			float3 old_color = pixel_colors[x + virtual_width * y];
 			float w = (float)virtual_width;
 			float h = (float)virtual_height;
@@ -125,13 +125,13 @@ void Tmpl8::MyApp::apply_post_processing()
 			});
 	}
 	if (gamma_correction > 1.01 || gamma_correction < 0.99) {
-		run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+		run_multithreaded(nthreads, virtual_width, virtual_height, [this](int x, int y) {
 			float3 old_color = pixel_colors[x + virtual_width * y];
 			pixel_colors[x + virtual_width * y] = float3(pow(old_color.x, gamma_correction), pow(old_color.y, gamma_correction), pow(old_color.z, gamma_correction));
 			});
 	}
 	if (chromatic_aberration != 0) {
-		run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+		run_multithreaded(nthreads, virtual_width, virtual_height, [this](int x, int y) {
 			float r;
 			if (x + chromatic_aberration < virtual_width && x + chromatic_aberration >= 0) {
 				r = pixel_colors[x + chromatic_aberration + virtual_width * y].x;
@@ -149,7 +149,7 @@ void Tmpl8::MyApp::apply_post_processing()
 			}
 			temp_image[x + virtual_width * y] = float3(r,g,b);
 			});
-		run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+		run_multithreaded(nthreads, virtual_width, virtual_height, [this](int x, int y) {
 			pixel_colors[x + virtual_width * y] = temp_image[x + virtual_width * y];
 			});
 	}
@@ -163,7 +163,7 @@ uint Tmpl8::MyApp::color_to_uint(const float3& color) {
 }
 
 void Tmpl8::MyApp::render_pixels() {
-	run_multithreaded(nthreads, virtual_width, virtual_height, false, [this](int x, int y) {
+	run_multithreaded(nthreads, virtual_width, virtual_height, [this](int x, int y) {
 		float3 color = pixel_colors[x + virtual_width * y];
 		for (int y2 = 0; y2 < upscaling; y2++) {
 			for (int x2 = 0; x2 < upscaling; x2++) {
