@@ -4,10 +4,7 @@
 #include "BVH.h"
 #include "Utils.h"
 
-struct DoubleBool {
-	bool first;
-	bool second;
-};
+
 
 struct TopBVHNodeScene {
 	float3 pos;
@@ -25,12 +22,13 @@ public:
 
 	bool active_rays = false; //false = rays, true = rays2 is currently active buffer
 	int ray_count = 0;
-	int shadowray_count = 0;
 	Ray* rays = nullptr;
 	Ray* rays2 = nullptr;
 	float3* temp_image = nullptr;
 	std::unique_ptr<Buffer> rays_buffer;
+	std::unique_ptr<Buffer> rays2_buffer;
 	std::unique_ptr<Kernel> ray_gen_kernel = std::make_unique<Kernel>((char*)"ray_gen.cl", (char*)"ray_gen");
+	//std::unique_ptr<Kernel> ray_extend_kernel = std::make_unique<Kernel>((char*)"ray_extend.cl", (char*)"extend");
 
 	float3 skycolor = float3(0, 0, 0);
 
@@ -57,6 +55,16 @@ private:
 	std::vector<Triangle> m_triangles;
 	std::vector<uint> m_indices;
 
+
+	Buffer b_top_bvh_nodes;
+	Buffer b_top_leaves;
+	Buffer b_top_indices;
+	Buffer b_bvh_nodes;
+	Buffer b_model_primitives_starts;
+	Buffer b_model_bvh_starts;
+	Buffer b_triangles;
+	Buffer b_indices;
+
 	void init_buffers(uint width, uint height);
 	void generate(
 		const uint screen_width,
@@ -70,11 +78,8 @@ private:
 	void extend(uint i);
 	void shade(uint i, const int rand, std::atomic<int>& new_ray_index);
 	void connect(float3* screendata, uint i);
-	void find_intersection(Ray& r) const;
-
-	void intersect(Ray& r) const;
-	void intersect_top(Ray& r, int node_index = 0) const;
-	void intersect_bot(Ray& r, int obj_index, int node_index = 0) const;
+	void intersect_top(Ray& r) const;
+	void intersect_bot(Ray& r, int obj_index) const;
 	void intersect_triangle(const Triangle& tri, Ray& ray) const;
 };
 

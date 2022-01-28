@@ -95,8 +95,6 @@ void BVH<T>::subdivide(BVHNode* parent, std::atomic<uint>& poolPtr, uint indices
 	subdivide(right, poolPtr, pivot, use_SAH);
 	left->parent = parent - pool.get();
 	right->parent = parent - pool.get();
-	printf("%i -> %i\n", parent - pool.get(), left - pool.get());
-	printf("%i -> %i\n", parent - pool.get(), right - pool.get());
 	parent->count = 0;
 	
 }

@@ -89,7 +89,7 @@ void Scene::trace_scene(
 	for (int i = 0; i < bounces; i++) {
 		counter = 0;
 
-		run_multithreaded(nthreads, ray_count, 1, [this, &counter, &screendata, &rand, screen_width, &screen_height](int x, int y) {
+		run_multithreaded(1, ray_count, 1, [this, &counter, &screendata, &rand, screen_width, &screen_height](int x, int y) {
 			extend(x);
 			shade(x, rand * (screen_width * screen_height) + x, counter);
 			connect(screendata, x);
@@ -101,13 +101,15 @@ void Scene::trace_scene(
 }
 
 void Scene::init_buffers(uint width, uint height){
-	if (rays != nullptr) delete[] rays;
-	if (rays != nullptr) delete[] rays2;
+	printf("rebuilding buffers\n");
+	delete[] rays;
+	delete[] rays2;
 	
 	rays = (Ray*)malloc(sizeof(Ray) * width * height);
 	rays2 = (Ray*)malloc(sizeof(Ray) * width * height);
 	rays_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays);
-
+	rays2_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays2);
+	active_rays = false;
 
 
 	m_top_bvh_nodes = std::vector<BVHNode>();
@@ -117,6 +119,8 @@ void Scene::init_buffers(uint width, uint height){
 	m_model_bvh_starts = std::vector<uint>();
 	m_triangles = std::vector<Triangle>();
 	m_indices = std::vector<uint>();
+
+	
 
 	uint model_start_index = 0;
 	uint model_bvh_index = 0;
@@ -147,6 +151,16 @@ void Scene::init_buffers(uint width, uint height){
 	}
 	m_top_indices.insert(m_top_indices.begin(), bvh.indices.get(), bvh.indices.get() + bvh.primitive_count);
 	m_top_bvh_nodes.insert(m_top_bvh_nodes.end(), bvh.pool.get(), bvh.pool.get() + bvh.elements_of_pool_used); // contains entire top level bvh pool
+
+
+
+	b_top_bvh_nodes = Buffer(sizeof(BVHNode) * m_top_bvh_nodes.size() / 4, Buffer::DEFAULT, m_top_bvh_nodes.data());
+	b_top_leaves = Buffer(sizeof(TopBVHNodeScene) * m_top_leaves.size() / 4, Buffer::DEFAULT, m_top_leaves.data());
+	b_bvh_nodes = Buffer(sizeof(BVHNode) * m_bvh_nodes.size() / 4, Buffer::DEFAULT, m_bvh_nodes.data());
+	b_model_primitives_starts = Buffer(sizeof(uint) * m_model_primitives_starts.size() / 4, Buffer::DEFAULT, m_model_primitives_starts.data());
+	b_model_bvh_starts = Buffer(sizeof(uint) * m_model_bvh_starts.size() / 4, Buffer::DEFAULT, m_model_bvh_starts.data());
+	b_triangles = Buffer(sizeof(Triangle) * m_triangles.size() / 4, Buffer::DEFAULT, m_triangles.data());
+	b_indices = Buffer(sizeof(uint) * m_indices.size() / 4, Buffer::DEFAULT, m_indices.data());
 }
 
 void Scene::generate(
@@ -162,7 +176,7 @@ void Scene::generate(
 }
 void Scene::extend(uint i) {
 	Ray& r = active_rays ? rays2[i] : rays[i];
-	find_intersection(r);
+	intersect_top(r);
 }
 void Scene::shade(uint i, const int rand, std::atomic<int>& new_ray_index) {
 	Ray& r = active_rays ? rays2[i] : rays[i];
@@ -225,21 +239,12 @@ void Scene::connect(float3* screendata, uint i){
 	screendata[r.pixel_id] = r.E;
 }
 
-void Scene::find_intersection(Ray& r) const {
-	intersect(r);
-}
-
-void Scene::intersect(Ray& r) const {
-	intersect_top(r);
-}
-
-
-void Scene::intersect_top(Ray& r, int node_index) const { //assumes ray intersects
+void Scene::intersect_top(Ray& r) const { //assumes ray intersects
 	//https://www.sci.utah.edu/~wald/Publications/2011/StackFree/sccg2011.pdf
 	const BVHNode* last = nullptr;
 	const BVHNode* current = &m_top_bvh_nodes[0];
-	const BVHNode* near_node;
-	const BVHNode* far_node;
+	const BVHNode* near_node = nullptr;
+	const BVHNode* far_node = nullptr;
 	float2 intersection_test_result = r.intersects_aabb(current->bounds);
 	if (intersection_test_result.x >= intersection_test_result.y || intersection_test_result.x > r.t) return; // now we know that the root is intersected and partly closer than the furthest already hit object
 	
@@ -254,6 +259,7 @@ void Scene::intersect_top(Ray& r, int node_index) const { //assumes ray intersec
 			last = current;
 			if (current->parent == -1) return;
 			current = &m_top_bvh_nodes[current->parent];
+			continue;
 		}
 
 
@@ -282,7 +288,7 @@ void Scene::intersect_top(Ray& r, int node_index) const { //assumes ray intersec
 
 		// either last node is near or parent
 
-		const BVHNode* try_child;
+		const BVHNode* try_child = nullptr;
 		if (current->parent == -1) {
 			try_child = (last != near_node) ? near_node : far_node;
 		} else {
@@ -306,14 +312,14 @@ void Scene::intersect_top(Ray& r, int node_index) const { //assumes ray intersec
 	throw exception("too low steps constant during bvh traversal");
 }
 
-void Scene::intersect_bot(Ray& r, int obj_index, int node_index) const { //assumes ray intersects
+void Scene::intersect_bot(Ray& r, int obj_index) const { //assumes ray intersects
 	//https://www.sci.utah.edu/~wald/Publications/2011/StackFree/sccg2011.pdf
 	const uint model_start = m_model_bvh_starts[obj_index];
 
 	const BVHNode* last = nullptr;
 	const BVHNode* current = &m_bvh_nodes[model_start];
-	const BVHNode* near_node;
-	const BVHNode* far_node;
+	const BVHNode* near_node = nullptr;
+	const BVHNode* far_node = nullptr;
 	float2 intersection_test_result = r.intersects_aabb(current->bounds);
 	if (intersection_test_result.x >= intersection_test_result.y || intersection_test_result.x > r.t) return; // now we know that the root is intersected and partly closer than the furthest already hit object
 
@@ -327,6 +333,7 @@ void Scene::intersect_bot(Ray& r, int obj_index, int node_index) const { //assum
 			last = current;
 			if (current->parent == -1) return;
 			current = &m_bvh_nodes[model_start + current->parent];
+			continue;
 		}
 
 
@@ -355,7 +362,7 @@ void Scene::intersect_bot(Ray& r, int obj_index, int node_index) const { //assum
 
 		// either last node is near or parent
 
-		const BVHNode* try_child;
+		const BVHNode* try_child = nullptr;
 		if (current->parent == -1) {
 			try_child = (last != near_node) ? near_node : far_node;
 		}
@@ -390,7 +397,7 @@ void Scene::intersect_triangle(const Triangle& tri, Ray& ray) const {
 	float3 h = cross(ray.d, edge2);
 	float a = dot(edge1, h);
 	if (a > -EPSILON && a < EPSILON) return;    // This ray is parallel to this triangle.
-	float f = 1.0 / a;
+	float f = 1.f / a;
 	float3 s = ray.o - tri.p0;
 	float u = f * dot(s, h);
 	if (u < 0.0 || u > 1.0) return;

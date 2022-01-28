@@ -1,53 +1,6 @@
 #include "common.cl"
 
-enum Material {
-	red = 0,
-	mirror = 1,
-	magenta = 2,
-	cyan = 3,
-	white = 4,
-	glass = 5,
-	red_glass = 6,
-	reflective_blue = 7,
-	white_light = 8,
-	emerald = 9,
-	bright_green = 10,
-	yellow = 11,
-	green_light = 12,
-};
 
-struct MaterialData{
-	float3 color; //it either is a static color or gets calculated with the location and normal
-	float specularity; //1.0 = 100% reflective
-	float transparent; // 1 if not transparent at all, 0 if completely transparent, this has to do with beers law
-	float refractive_index; 
-	bool isLight;
-};
-
-__constant struct MaterialData materials[13] = {
-	{{1,0,0}, 				0.0, 1.0, 0.0, false},
-	{{1,1,1}, 				1.0, 1.0, 0.0, false},
-	{{0.21,0.26,0}, 		0.0, 1.0, 0.0, false},
-	{{0.1,1,1}, 			0.1, 1.0, 0.0, false},
-	{{1,1,1}, 				0.0, 1.0, 0.0, false},
-	{{1,1,1}, 				0.0, 0.0, 1.5, false}, //glass
-	{{0.88,0.07,0.37}, 		0.0, 0.7, 1.2, false},
-	{{0.1,0.6,0.9}, 		0.9, 1.0, 0.0, false},
-	{{10,10,10}, 			0.0, 1.0, 0.0, true},
-	{{0.31,0.78,0.47}, 		0.0, 0.3, 1.6, false},
-	{{0.66, 0.86, 0.12}, 	0.0, 1.0, 0.0, false},
-	{{0.88, 0.91, 0.13}, 	0.0, 1.0, 0.0, false},
-	{{6.6, 8.6, 1.2}, 		0.0, 1.0, 0.0, true},
-};
-
-
-struct Triangle{
-	float3 p0;
-	float3 p1;
-	float3 p2;
-	float3 normal;
-	enum Material m;
-};
 
 void intersect_primitive(const Triangle& tri, Ray& ray)
 {
@@ -73,89 +26,191 @@ void intersect_primitive(const Triangle& tri, Ray& ray)
 	}
 }
 
-struct AABB{
-	float minx;
-	float miny;
-	float minz;
-	float maxx;
-	float maxy;
-	float maxz;
-};
-
-struct BVHNode {
-	struct AABB bounds;
-	int leftFirst;
-	int count;
-};
-
-
-struct TopBVHNode {
-	long long obj;
-	float3 pos;
-};
-
-void intersect_primitive(const TopBVHNode& node, Ray& ray) {
-	ray.o -= node.pos;
-	node.obj->intersects(ray);
-	ray.o += node.pos;
+float2 intersects_aabb(const AABB& box, const struct Ray& r)
+{
+	//https://gist.github.com/DomNomNom/46bb1ce47f68d255fd5d
+	float tMinx = (box.minx - r.o.x) * r.invDir.x;
+	float tMiny = (box.miny - r.o.y) * r.invDir.y;
+	float tMinz = (box.minz - r.o.z) * r.invDir.z;
+	float tMaxx = (box.maxx - r.o.x) * r.invDir.x;
+	float tMaxy = (box.maxy - r.o.y) * r.invDir.y;
+	float tMaxz = (box.maxz - r.o.z) * r.invDir.z;
+	float t1x = min(tMinx, tMaxx);
+	float t1y = min(tMiny, tMaxy);
+	float t1z = min(tMinz, tMaxz);
+	float t2x = max(tMinx, tMaxx);
+	float t2y = max(tMiny, tMaxy);
+	float t2z = max(tMinz, tMaxz);
+	float tNear = max(max(t1x, t1y), t1z);
+	float tFar = min(min(t2x, t2y), t2z);
+	return float2(tNear, tFar);
 }
 
+void intersect_bot(Ray& r, int obj_index) const { //assumes ray intersects
+	//https://www.sci.utah.edu/~wald/Publications/2011/StackFree/sccg2011.pdf
+	const uint model_start = m_model_bvh_starts[obj_index];
+
+	const BVHNode* last = nullptr;
+	const BVHNode* current = &m_bvh_nodes[model_start];
+	const BVHNode* near_node = nullptr;
+	const BVHNode* far_node = nullptr;
+	float2 intersection_test_result = r.intersects_aabb(current->bounds);
+	if (intersection_test_result.x >= intersection_test_result.y || intersection_test_result.x > r.t) return; // now we know that the root is intersected and partly closer than the furthest already hit object
+
+	for (int step = 0; step < 100000; step++) {
+		if (current->count) { // if in leaf
+			for (int i = current->leftFirst; i < current->leftFirst + current->count; i++) {
+				const uint prim_start = m_model_primitives_starts[obj_index];
+				const Triangle& t = m_triangles[prim_start + m_indices[prim_start + i]];
+				intersect_triangle(t, r);
+			}
+			last = current;
+			if (current->parent == -1) return;
+			current = &m_bvh_nodes[model_start + current->parent];
+			continue;
+		}
 
 
-void intersects(Ray& r) const {
-	instantiated_intersect(r);
-}
+		float dist_left = abs(m_bvh_nodes[model_start + current->leftFirst].bounds.minx - r.o.x) +
+			abs(m_bvh_nodes[model_start + current->leftFirst].bounds.miny - r.o.y) +
+			abs(m_bvh_nodes[model_start + current->leftFirst].bounds.minz - r.o.z);
+		float dist_right = abs(m_bvh_nodes[model_start + current->leftFirst + 1].bounds.minx - r.o.x) +
+			abs(m_bvh_nodes[model_start + current->leftFirst + 1].bounds.miny - r.o.y) +
+			abs(m_bvh_nodes[model_start + current->leftFirst + 1].bounds.minz - r.o.z);
+		if (dist_left < dist_right) {
+			near_node = &m_bvh_nodes[model_start + current->leftFirst];
+			far_node = &m_bvh_nodes[model_start + current->leftFirst + 1];
+		}
+		else {
+			near_node = &m_bvh_nodes[model_start + current->leftFirst + 1];
+			far_node = &m_bvh_nodes[model_start + current->leftFirst];
+		}
 
-template<typename T>
-void BVH<T>::instantiated_intersect(Ray& r) const {
-	BVHNode* n = &pool[0];
-	// more from slides
-	float2 result = r.intersects_aabb(n->bounds);
-	if (result.x > result.y || result.x > r.t) return;
-	intersect_internal(r);
-}
 
-template<typename T>
-void BVH<T>::intersect_internal(Ray& r, int node_index) const { //assumes ray intersects
-	BVHNode* n = &pool[node_index];
-	if (n->count) {
-		for (int i = n->leftFirst; i < n->leftFirst + n->count; i++) {
-			intersect_primitive(primitives[indices[i]], r);
+		if (last == far_node) { //just went up
+			last = current;
+			if (current->parent == -1) return;
+			current = &m_bvh_nodes[model_start + current->parent];
+			continue;
+		}
+
+		// either last node is near or parent
+
+		const BVHNode* try_child = nullptr;
+		if (current->parent == -1) {
+			try_child = (last != near_node) ? near_node : far_node;
+		}
+		else {
+			try_child = (last == &m_bvh_nodes[model_start + current->parent]) ? near_node : far_node;
+		}
+
+		intersection_test_result = r.intersects_aabb(try_child->bounds);
+		if (intersection_test_result.x < intersection_test_result.y) { // if intersection is found
+			last = current;
+			current = try_child;
+		}
+		else { //either move to far or up
+			if (try_child == near_node) { // move to far
+				last = near_node;
+			}
+			else { // move up
+				last = current;
+				if (current->parent == -1) return;
+				current = &m_bvh_nodes[model_start + current->parent];
+			}
 		}
 	}
-	else
-	{
-		float2 result_left = r.intersects_aabb(pool[n->leftFirst].bounds);
-		float2 result_right = r.intersects_aabb(pool[n->leftFirst + 1].bounds);
-		if (result_left.x < result_left.y && result_left.x < r.t) {
-			if (result_right.x < result_right.y && result_right.x < r.t) {
-				if (result_left.x < result_right.x) {
-					intersect_internal(r, n->leftFirst);
-					if (result_right.x < r.t) {
-						intersect_internal(r, n->leftFirst + 1);
-					}
-				}
-				else {
-					intersect_internal(r, n->leftFirst + 1);
-					if (result_left.x < r.t) {
-						intersect_internal(r, n->leftFirst);
-					}
-				}
+}
+
+void Scene::intersect_top(Ray& r) const { //assumes ray intersects
+	//https://www.sci.utah.edu/~wald/Publications/2011/StackFree/sccg2011.pdf
+	const BVHNode* last = nullptr;
+	const BVHNode* current = &m_top_bvh_nodes[0];
+	const BVHNode* near_node = nullptr;
+	const BVHNode* far_node = nullptr;
+	float2 intersection_test_result = r.intersects_aabb(current->bounds);
+	if (intersection_test_result.x >= intersection_test_result.y || intersection_test_result.x > r.t) return; // now we know that the root is intersected and partly closer than the furthest already hit object
+	
+	for (int step = 0; step < 100000; step++) {
+		if (current->count) { // if in leaf
+			for (int i = current->leftFirst; i < current->leftFirst + current->count; i++) {
+				TopBVHNodeScene node = m_top_leaves[m_top_indices[i]];
+				r.o -= node.pos;
+				intersect_bot(r, node.obj_index);
+				r.o += node.pos;
 			}
-			else {
-				intersect_internal(r, n->leftFirst);
+			last = current;
+			if (current->parent == -1) return;
+			current = &m_top_bvh_nodes[current->parent];
+			continue;
+		}
+
+
+		float dist_left = abs(m_top_bvh_nodes[current->leftFirst].bounds.minx - r.o.x) + 
+			abs(m_top_bvh_nodes[current->leftFirst].bounds.miny - r.o.y) + 
+			abs(m_top_bvh_nodes[current->leftFirst].bounds.minz - r.o.z);
+		float dist_right = abs(m_top_bvh_nodes[current->leftFirst + 1].bounds.minx - r.o.x) +
+			abs(m_top_bvh_nodes[current->leftFirst + 1].bounds.miny - r.o.y) +
+			abs(m_top_bvh_nodes[current->leftFirst + 1].bounds.minz - r.o.z);
+		if (dist_left < dist_right) {
+			near_node = &m_top_bvh_nodes[current->leftFirst];
+			far_node = &m_top_bvh_nodes[current->leftFirst + 1];
+		}
+		else {
+			near_node = &m_top_bvh_nodes[current->leftFirst + 1];
+			far_node = &m_top_bvh_nodes[current->leftFirst];
+		}
+
+
+		if (last == far_node) { //just went up
+			last = current;
+			if (current->parent == -1) return;
+			current = &m_top_bvh_nodes[current->parent];
+			continue;
+		}
+
+		// either last node is near or parent
+
+		const BVHNode* try_child = nullptr;
+		if (current->parent == -1) {
+			try_child = (last != near_node) ? near_node : far_node;
+		} else {
+			try_child = (last == &m_top_bvh_nodes[current->parent]) ? near_node : far_node;
+		}
+
+		intersection_test_result = r.intersects_aabb(try_child->bounds);
+		if (intersection_test_result.x < intersection_test_result.y) { // if intersection is found
+			last = current;
+			current = try_child;
+		} else { //either move to far or up
+			if (try_child == near_node) { // move to far
+				last = near_node;
+			} else { // move up
+				last = current;
+				if (current->parent == -1) return;
+				current = &m_top_bvh_nodes[current->parent];
 			}
 		}
-		else if (result_right.x <= result_right.y && result_right.x < r.t) intersect_internal(r, n->leftFirst + 1);
 	}
 }
+
+
+
+
 
 
 
 
 __kernel void extend(
 	__global struct Ray* ray_data,
-	__global struct 
+	__global struct BVHNode* m_top_bvh_nodes,
+	__global struct TopBVHNode* m_top_leaves,
+	__global uint* m_top_indices,
+	__global struct BVHNode* m_bvh_nodes,
+	__global uint* m_model_primitives_starts,
+	__global uint* m_model_bvh_starts,
+	__global struct Triangle* m_triangles,
+	__global uint* m_indices
 	
 	) {
 	uint i = get_global_id( 0 );
