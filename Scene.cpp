@@ -94,7 +94,7 @@ void Scene::trace_scene(
 	Buffer b_model_bvh_starts = Buffer(sizeof(uint) * m_model_bvh_starts.size() / 4, Buffer::DEFAULT, m_model_bvh_starts.data());
 	Buffer b_triangles = Buffer(sizeof(Triangle) * m_triangles.size() / 4, Buffer::DEFAULT, m_triangles.data());
 	Buffer b_indices = Buffer(sizeof(uint) * m_indices.size() / 4, Buffer::DEFAULT, m_indices.data());
-	Buffer b_rays = Buffer(sizeof(uint) / 4, Buffer::DEFAULT, m_rays);
+	Buffer b_rays = Buffer(sizeof(uint) / 4, Buffer::DEFAULT, m_rays.get());
 	b_top_bvh_nodes.CopyToDevice();
 	b_top_leaves.CopyToDevice();
 	b_top_indices.CopyToDevice();
@@ -130,11 +130,11 @@ void Scene::trace_scene(
 		ray_extend_kernel->SetArgument(0, active_rays ? rays2_buffer.get() : rays_buffer.get());
 		ray_extend_kernel->SetArgument(9, ray_count-1);
 		printf("%i\n", i);
-		ray_extend_kernel->Run(ray_count /* + (-(ray_count % 32))*/, 1);
+		//ray_extend_kernel->Run(ray_count + (32 - (ray_count % 32)), 32);
 		active_rays ? rays2_buffer->CopyFromDevice() : rays_buffer->CopyFromDevice();
 		printf("copying took %f seconds\n", t.elapsed());
 		run_multithreaded(nthreads, ray_count, 1, [this, &counter, &screendata, &rand, screen_width, &screen_height](int x, int y) {
-			//extend(x);
+			extend(x);
 			shade(x, rand * (screen_width * screen_height) + x, counter);
 			connect(screendata, x);
 			});
@@ -149,15 +149,12 @@ void Scene::trace_scene(
 
 void Scene::init_buffers(uint width, uint height){
 	printf("rebuilding buffers\n");
-	delete[] rays;
-	delete[] rays2;
-	delete[] m_rays;
 	
-	rays = (Ray*)malloc(sizeof(Ray) * width * height);
-	rays2 = (Ray*)malloc(sizeof(Ray) * width * height);
-	m_rays = (uint*)malloc(sizeof(uint));
-	rays_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays);
-	rays2_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays2);
+	rays = std::make_unique<Ray[]>(width*height);
+	rays2 = std::make_unique<Ray[]>(width * height);
+	m_rays = std::make_unique<uint[]>(1);
+	rays_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays.get());
+	rays2_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays2.get());
 	active_rays = false;
 
 
@@ -200,9 +197,6 @@ void Scene::init_buffers(uint width, uint height){
 	}
 	m_top_indices.insert(m_top_indices.begin(), bvh.indices.get(), bvh.indices.get() + bvh.primitive_count);
 	m_top_bvh_nodes.insert(m_top_bvh_nodes.end(), bvh.pool.get(), bvh.pool.get() + bvh.elements_of_pool_used); // contains entire top level bvh pool
-
-
-
 }
 
 bool same_node(const BVHNode& n1, const BVHNode& n2) {

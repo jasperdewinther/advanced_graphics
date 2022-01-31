@@ -11,6 +11,9 @@ Ray::Ray(float3 origin, float3 direction, uint pixel_id, float3 E, float3 T):
 	T(T),
 	hitptr(4294967295)
 {}
+Ray::Ray() {
+
+}
 
 float2 Ray::intersects_aabb(const BVHNode & box)
 {
@@ -78,7 +81,7 @@ void generate_primary_rays(
 	kernel->SetArgument(15, camerapos.z);
 	kernel->SetArgument(16, (int)(sizeof(Ray)/sizeof(float)));
 	kernel->SetArgument(17, (int)noise);
-	kernel->Run2D(int2(width - ((width%4)), height - ((height%4))), int2(4,4));
+	kernel->Run2D(int2(width + (4-(width%4)), height + (4-(height%4))), int2(4,4));
 	buffer->CopyFromDevice();
 }
 

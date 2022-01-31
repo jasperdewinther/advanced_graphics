@@ -17,6 +17,7 @@ public:
 	float3 T;
 	uint hitptr; //a pointer to the hit object
 
+	Ray();
 	Ray(float3 origin, float3 direction, uint pixel_id, float3 E, float3 T);
 	float2 intersects_aabb(const BVHNode& box); //returns tnear and tfar
 };

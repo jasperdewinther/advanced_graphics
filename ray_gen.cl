@@ -9,7 +9,7 @@ __kernel void ray_gen(__global struct Ray *ray_data, int width, int height,
   uint x = get_global_id(0);
   uint y = get_global_id(1);
 
-  if (x >= width - 1 || y >= height - 1)
+  if (x > width - 1 || y > height - 1)
     return;
 
   struct xorshift_state rand = {

@@ -22,9 +22,9 @@ public:
 
 	bool active_rays = false; //false = rays, true = rays2 is currently active buffer
 	int ray_count = 0;
-	Ray* rays = nullptr;
-	Ray* rays2 = nullptr;
-	float3* temp_image = nullptr;
+	std::unique_ptr<Ray[]> rays;
+	std::unique_ptr<Ray[]> rays2;
+	std::unique_ptr<float3[]> temp_image;
 	std::unique_ptr<Buffer> rays_buffer;
 	std::unique_ptr<Buffer> rays2_buffer;
 	std::unique_ptr<Kernel> ray_gen_kernel = std::make_unique<Kernel>((char*)"ray_gen.cl", (char*)"ray_gen");
@@ -44,7 +44,6 @@ public:
 		const int rand,
 		const uint nthreads
 	);
-	float3 trace_scene(Ray& r, uint bounces, bool complexity_view, int rand) const;
 private:
 	std::vector<BVHNode> m_top_bvh_nodes;
 	std::vector<TopBVHNodeScene> m_top_leaves;
@@ -54,7 +53,7 @@ private:
 	std::vector<uint> m_model_bvh_starts;
 	std::vector<Triangle> m_triangles;
 	std::vector<uint> m_indices;
-	uint* m_rays;
+	std::unique_ptr<uint[]> m_rays;
 
 	void init_buffers(uint width, uint height);
 	void generate(

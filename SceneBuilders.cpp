@@ -124,7 +124,7 @@ Scene SceneBuilders::glass_dragon()
 
 	std::vector<TopBVHNode> bvh_nodes;
 	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(0,0,0) });
-	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[1], float3(-3.5,0,2.5) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[1], float3(-3.5,1.5,2.5) });
 	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[2], float3(3.5,0,-2.5) });
 	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[3], float3(3.5,0,2.5) });
 	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[4], float3(-3.5,0,-2.5) });
