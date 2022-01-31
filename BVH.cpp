@@ -35,7 +35,13 @@ void BVH<T>::BVH_construct(bool use_SAH)
 	// subdivide root node
 	root->leftFirst = 0;
 	root->count = N;
-	root->bounds = CalculateBounds(0, N);
+	AABB bounds = CalculateBounds(0, N);
+	root->maxx = bounds.maxx;
+	root->maxy = bounds.maxy;
+	root->maxz = bounds.maxz;
+	root->minx = bounds.minx;
+	root->miny = bounds.miny;
+	root->minz = bounds.minz;
 	root->parent = -1;
 	subdivide(root, poolPtr, 0, use_SAH);
 	printf("built bvh in %f seconds\n", t.elapsed());
@@ -49,7 +55,7 @@ void BVH<T>::BVH_construct(bool use_SAH)
 template<>
 void BVH<TopBVHNode>::set_centers(uint N)
 {
-	for (int i = 0; i < N; i++) centers[i] = primitives[i].pos + primitives[i].obj->pool[0].bounds.get_center();
+	for (int i = 0; i < N; i++) centers[i] = primitives[i].pos + primitives[i].obj->pool[0].get_center();
 }
 
 template<>
@@ -85,11 +91,25 @@ void BVH<T>::subdivide(BVHNode* parent, std::atomic<uint>& poolPtr, uint indices
 	BVHNode* left = &pool[index];
 	BVHNode* right = &pool[index+1];
 	//set left and right count and left
-	int pivot = partition(parent->bounds, indices_start, parent->count, use_SAH);
+	int pivot = partition(*parent, indices_start, parent->count, use_SAH);
 	left->count = pivot - indices_start;
-	left->bounds = CalculateBounds(indices_start, left->count);
+	AABB bounds = CalculateBounds(indices_start, left->count);
+	left->maxx = bounds.maxx;
+	left->maxy = bounds.maxy;
+	left->maxz = bounds.maxz;
+	left->minx = bounds.minx;
+	left->miny = bounds.miny;
+	left->minz = bounds.minz;
+
+
 	right->count = parent->count - left->count;
-	right->bounds = CalculateBounds(pivot, right->count);
+	bounds = CalculateBounds(pivot, right->count);
+	right->maxx = bounds.maxx;
+	right->maxy = bounds.maxy;
+	right->maxz = bounds.maxz;
+	right->minx = bounds.minx;
+	right->miny = bounds.miny;
+	right->minz = bounds.minz;
 
 	subdivide(left, poolPtr, indices_start, use_SAH);
 	subdivide(right, poolPtr, pivot, use_SAH);
@@ -100,7 +120,7 @@ void BVH<T>::subdivide(BVHNode* parent, std::atomic<uint>& poolPtr, uint indices
 }
 
 template<typename T>
-int BVH<T>::partition(const AABB& bb, uint start, uint count, bool use_SAH)
+int BVH<T>::partition(const BVHNode& bb, uint start, uint count, bool use_SAH)
 {
 	if (use_SAH) {
 		const int BINS = 8;
@@ -231,13 +251,14 @@ AABB BVH<TopBVHNode>::CalculateBounds(uint first, uint amount) const
 	float maxz = std::numeric_limits<float>::lowest();
 
 	for (uint i = first; i < first + amount; i++) {
-		minx = min(primitives[indices[i]].obj->pool[0].bounds.minx + primitives[indices[i]].pos.x, minx);
-		maxx = max(primitives[indices[i]].obj->pool[0].bounds.maxx + primitives[indices[i]].pos.x, maxx);
-		miny = min(primitives[indices[i]].obj->pool[0].bounds.miny + primitives[indices[i]].pos.y, miny);
-		maxy = max(primitives[indices[i]].obj->pool[0].bounds.maxy + primitives[indices[i]].pos.y, maxy);
-		minz = min(primitives[indices[i]].obj->pool[0].bounds.minz + primitives[indices[i]].pos.z, minz);
-		maxz = max(primitives[indices[i]].obj->pool[0].bounds.maxz + primitives[indices[i]].pos.z, maxz);
+		minx = min(primitives[indices[i]].obj->pool[0].minx + primitives[indices[i]].pos.x, minx);
+		maxx = max(primitives[indices[i]].obj->pool[0].maxx + primitives[indices[i]].pos.x, maxx);
+		miny = min(primitives[indices[i]].obj->pool[0].miny + primitives[indices[i]].pos.y, miny);
+		maxy = max(primitives[indices[i]].obj->pool[0].maxy + primitives[indices[i]].pos.y, maxy);
+		minz = min(primitives[indices[i]].obj->pool[0].minz + primitives[indices[i]].pos.z, minz);
+		maxz = max(primitives[indices[i]].obj->pool[0].maxz + primitives[indices[i]].pos.z, maxz);
 	}
 
 	return AABB(minx - bb_epsilon, miny - bb_epsilon, minz - bb_epsilon, maxx + bb_epsilon, maxy + bb_epsilon, maxz + bb_epsilon);
 }
+

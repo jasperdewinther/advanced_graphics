@@ -1,7 +1,7 @@
 #pragma once
 #include <limits>
 #include <vector>
-#include "AABB.h"
+#include "BVHNode.h"
 #include "Triangle.h"
 
 
@@ -15,10 +15,10 @@ public:
 	int pixel_id;
 	float3 E;
 	float3 T;
-	const Triangle* hitptr; //a pointer to the hit object
+	uint hitptr; //a pointer to the hit object
 
 	Ray(float3 origin, float3 direction, uint pixel_id, float3 E, float3 T);
-	float2 intersects_aabb(const AABB& box); //returns tnear and tfar
+	float2 intersects_aabb(const BVHNode& box); //returns tnear and tfar
 };
 
 void generate_primary_rays(
@@ -27,7 +27,6 @@ void generate_primary_rays(
 	float fov, 
 	int width, 
 	int height,
-	Ray* rays, 
 	Kernel* kernel,
 	Buffer* buffer,
 	int noise); //fov in horizontal degrees

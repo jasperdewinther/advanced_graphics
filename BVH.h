@@ -2,14 +2,10 @@
 #include <vector>
 #include "Triangle.h"
 #include "Ray.h"
+#include "BVHNode.h"
+#include "AABB.h"
 
 
-struct BVHNode {
-	AABB bounds;
-	int leftFirst;
-	int count;
-	int parent;
-};
 
 struct bb_intersection_results {
 	float2 first;
@@ -38,7 +34,7 @@ private:
 	int count_depth(BVHNode* node) const;
 	int count_nodes(BVHNode* node) const;
 	void subdivide(BVHNode* parent, std::atomic<uint>& poolPtr, uint indices_start, bool use_SAH);
-	int partition(const AABB& bb, uint start, uint count, bool use_SAH);
+	int partition(const BVHNode& bb, uint start, uint count, bool use_SAH);
 	int partition_shuffle(int axis, float pos, uint start, uint count);
 	AABB CalculateBounds(uint first, uint amount) const;
 };
@@ -47,5 +43,6 @@ struct TopBVHNode {
 	BVH<Triangle>* obj;
 	float3 pos;
 };
+
 
 using TopLevelBVH = BVH<TopBVHNode>;

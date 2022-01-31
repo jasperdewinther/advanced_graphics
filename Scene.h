@@ -28,7 +28,7 @@ public:
 	std::unique_ptr<Buffer> rays_buffer;
 	std::unique_ptr<Buffer> rays2_buffer;
 	std::unique_ptr<Kernel> ray_gen_kernel = std::make_unique<Kernel>((char*)"ray_gen.cl", (char*)"ray_gen");
-	//std::unique_ptr<Kernel> ray_extend_kernel = std::make_unique<Kernel>((char*)"ray_extend.cl", (char*)"extend");
+	std::unique_ptr<Kernel> ray_extend_kernel = std::make_unique<Kernel>((char*)"ray_extend.cl", (char*)"extend");
 
 	float3 skycolor = float3(0, 0, 0);
 
@@ -54,16 +54,7 @@ private:
 	std::vector<uint> m_model_bvh_starts;
 	std::vector<Triangle> m_triangles;
 	std::vector<uint> m_indices;
-
-
-	Buffer b_top_bvh_nodes;
-	Buffer b_top_leaves;
-	Buffer b_top_indices;
-	Buffer b_bvh_nodes;
-	Buffer b_model_primitives_starts;
-	Buffer b_model_bvh_starts;
-	Buffer b_triangles;
-	Buffer b_indices;
+	uint* m_rays;
 
 	void init_buffers(uint width, uint height);
 	void generate(
@@ -80,6 +71,6 @@ private:
 	void connect(float3* screendata, uint i);
 	void intersect_top(Ray& r) const;
 	void intersect_bot(Ray& r, int obj_index) const;
-	void intersect_triangle(const Triangle& tri, Ray& ray) const;
+	void intersect_triangle(const Triangle& tri, Ray& ray, uint triangle_index) const;
 };
 

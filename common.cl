@@ -17,7 +17,7 @@ enum Material {
 };
 
 struct MaterialData{
-	float3 color; //it either is a static color or gets calculated with the location and normal
+	float4 color; //it either is a static color or gets calculated with the location and normal
 	float specularity; //1.0 = 100% reflective
 	float transparent; // 1 if not transparent at all, 0 if completely transparent, this has to do with beers law
 	float refractive_index; 
@@ -25,49 +25,50 @@ struct MaterialData{
 };
 
 __constant struct MaterialData materials[13] = {
-	{{1,0,0}, 				0.0, 1.0, 0.0, false},
-	{{1,1,1}, 				1.0, 1.0, 0.0, false},
-	{{0.21,0.26,0}, 		0.0, 1.0, 0.0, false},
-	{{0.1,1,1}, 			0.1, 1.0, 0.0, false},
-	{{1,1,1}, 				0.0, 1.0, 0.0, false},
-	{{1,1,1}, 				0.0, 0.0, 1.5, false}, //glass
-	{{0.88,0.07,0.37}, 		0.0, 0.7, 1.2, false},
-	{{0.1,0.6,0.9}, 		0.9, 1.0, 0.0, false},
-	{{10,10,10}, 			0.0, 1.0, 0.0, true},
-	{{0.31,0.78,0.47}, 		0.0, 0.3, 1.6, false},
-	{{0.66, 0.86, 0.12}, 	0.0, 1.0, 0.0, false},
-	{{0.88, 0.91, 0.13}, 	0.0, 1.0, 0.0, false},
-	{{6.6, 8.6, 1.2}, 		0.0, 1.0, 0.0, true},
+	{{1,0,0,0}, 			0.0, 1.0, 0.0, false},
+	{{1,1,1,0}, 			1.0, 1.0, 0.0, false},
+	{{0.21,0.26,0,0}, 		0.0, 1.0, 0.0, false},
+	{{0.1,1,1,0}, 			0.1, 1.0, 0.0, false},
+	{{1,1,1,0}, 			0.0, 1.0, 0.0, false},
+	{{1,1,1,0}, 			0.0, 0.0, 1.5, false}, //glass
+	{{0.88,0.07,0.37,0}, 	0.0, 0.7, 1.2, false},
+	{{0.1,0.6,0.9,0}, 		0.9, 1.0, 0.0, false},
+	{{10,10,10,0}, 			0.0, 1.0, 0.0, true},
+	{{0.31,0.78,0.47,0}, 	0.0, 0.3, 1.6, false},
+	{{0.66, 0.86, 0.12,0}, 	0.0, 1.0, 0.0, false},
+	{{0.88, 0.91, 0.13,0}, 	0.0, 1.0, 0.0, false},
+	{{6.6, 8.6, 1.2,0}, 	0.0, 1.0, 0.0, true},
 };
 
 
 struct Triangle{
-	float3 p0;
-	float3 p1;
-	float3 p2;
-	float3 normal;
+	float4 p0;
+	float4 p1;
+	float4 p2;
+	float4 normal;
 	enum Material m;
 };
 
-struct AABB{
+
+struct BVHNode {
 	float minx;
 	float miny;
 	float minz;
 	float maxx;
 	float maxy;
 	float maxz;
-};
-
-struct BVHNode {
-	struct AABB bounds;
 	int leftFirst;
 	int count;
 	int parent;
 };
 
+bool same_node(struct BVHNode n1, struct BVHNode n2) {
+	return n1.parent == n2.parent && n1.leftFirst == n2.leftFirst && n1.count == n2.count;
+}
+
 
 struct TopBVHNode {
-	float3 pos;
+	float4 pos;
 	uint obj;
 };
 
@@ -79,7 +80,7 @@ struct Ray{
 	int pixel_id;
 	float4 E;
 	float4 T;
-	long long hitptr; //a pointer to the hit object
+	uint hitptr; //a pointer to the hit object
 };
 
 struct xorshift_state {

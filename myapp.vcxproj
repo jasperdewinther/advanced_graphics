@@ -138,6 +138,7 @@
   <ItemGroup>
     <ClCompile Include="AABB.cpp" />
     <ClCompile Include="BVH.cpp" />
+    <ClCompile Include="BVHNode.cpp" />
     <ClCompile Include="lib\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="lib\imgui\backends\imgui_impl_opengl3.cpp" />
     <ClCompile Include="lib\imgui\imgui.cpp" />
@@ -162,6 +163,7 @@
   <ItemGroup>
     <ClInclude Include="AABB.h" />
     <ClInclude Include="BVH.h" />
+    <ClInclude Include="BVHNode.h" />
     <ClInclude Include="cl\tools.cl" />
     <ClInclude Include="lib\imgui\backends\imgui_impl_glfw.h" />
     <ClInclude Include="lib\imgui\backends\imgui_impl_opengl3.h" />

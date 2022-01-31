@@ -1,219 +1,232 @@
 #include "common.cl"
 
-
-
-void intersect_primitive(const Triangle& tri, Ray& ray)
-{
-	//https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-	const float EPSILON = 0.0000001;
-	float3 edge1 = tri.p1 - tri.p0;
-	float3 edge2 = tri.p2 - tri.p0;
-	float3 h = cross(ray.d, edge2);
-	float a = dot(edge1, h);
-	if (a > -EPSILON && a < EPSILON) return;    // This ray is parallel to this triangle.
-	float f = 1.0 / a;
-	float3 s = ray.o - tri.p0;
-	float u = f * dot(s, h);
-	if (u < 0.0 || u > 1.0) return;
-	float3 q = cross(s, edge1);
-	float v = f * dot(ray.d, q);
-	if (v < 0.0 || u + v > 1.0) return;
-	// At this stage we can compute t to find out where the intersection point is on the line.
-	float t = f * dot(edge2, q);
-	if (t > 0.f && ray.t > t) {
-		ray.t = t;
-		ray.hitptr = &tri;
-	}
+void intersect_triangle(struct Triangle *tri, struct Ray *ray,
+                        uint triangle_index) {
+  // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+  const float EPSILON = 0.0000001;
+  float4 edge1 = tri->p1 - tri->p0;
+  float4 edge2 = tri->p2 - tri->p0;
+  float3 h = cross(ray->d.xyz, edge2.xyz);
+  float a = dot(edge1.xyz, h);
+  if (a > -EPSILON && a < EPSILON)
+    return; // This ray is parallel to this triangle.
+  float f = 1.0 / a;
+  float3 s = ray->o.xyz - tri->p0.xyz;
+  float u = f * dot(s, h);
+  if (u < 0.0 || u > 1.0)
+    return;
+  float3 q = cross(s, edge1.xyz);
+  float v = f * dot(ray->d.xyz, q);
+  if (v < 0.0 || u + v > 1.0)
+    return;
+  // At this stage we can compute t to find out where the intersection point is
+  // on the line.
+  float t = f * dot(edge2.xyz, q);
+  if (t > 0.f && ray->t > t) {
+    ray->t = t;
+    ray->hitptr = triangle_index;
+  }
 }
 
-float2 intersects_aabb(const AABB& box, const struct Ray& r)
-{
-	//https://gist.github.com/DomNomNom/46bb1ce47f68d255fd5d
-	float tMinx = (box.minx - r.o.x) * r.invDir.x;
-	float tMiny = (box.miny - r.o.y) * r.invDir.y;
-	float tMinz = (box.minz - r.o.z) * r.invDir.z;
-	float tMaxx = (box.maxx - r.o.x) * r.invDir.x;
-	float tMaxy = (box.maxy - r.o.y) * r.invDir.y;
-	float tMaxz = (box.maxz - r.o.z) * r.invDir.z;
-	float t1x = min(tMinx, tMaxx);
-	float t1y = min(tMiny, tMaxy);
-	float t1z = min(tMinz, tMaxz);
-	float t2x = max(tMinx, tMaxx);
-	float t2y = max(tMiny, tMaxy);
-	float t2z = max(tMinz, tMaxz);
-	float tNear = max(max(t1x, t1y), t1z);
-	float tFar = min(min(t2x, t2y), t2z);
-	return float2(tNear, tFar);
+float2 intersects_aabb(struct BVHNode *box, struct Ray *r) {
+  // https://gist.github.com/DomNomNom/46bb1ce47f68d255fd5d
+  float tMinx = (box->minx - r->o.x) * r->invDir.x;
+  float tMiny = (box->miny - r->o.y) * r->invDir.y;
+  float tMinz = (box->minz - r->o.z) * r->invDir.z;
+  float tMaxx = (box->maxx - r->o.x) * r->invDir.x;
+  float tMaxy = (box->maxy - r->o.y) * r->invDir.y;
+  float tMaxz = (box->maxz - r->o.z) * r->invDir.z;
+  float t1x = min(tMinx, tMaxx);
+  float t1y = min(tMiny, tMaxy);
+  float t1z = min(tMinz, tMaxz);
+  float t2x = max(tMinx, tMaxx);
+  float t2y = max(tMiny, tMaxy);
+  float t2z = max(tMinz, tMaxz);
+  float tNear = max(max(t1x, t1y), t1z);
+  float tFar = min(min(t2x, t2y), t2z);
+  float2 nearfar = {tNear, tFar};
+  return nearfar;
 }
 
-void intersect_bot(Ray& r, int obj_index) const { //assumes ray intersects
-	//https://www.sci.utah.edu/~wald/Publications/2011/StackFree/sccg2011.pdf
-	const uint model_start = m_model_bvh_starts[obj_index];
+void intersect_bot(struct Ray *r, int obj_index,
+                   __global struct BVHNode *m_bvh_nodes,
+                   __global uint *m_model_primitives_starts,
+                   __global uint *m_model_bvh_starts,
+                   __global struct Triangle *m_triangles,
+                   __global uint *m_indices
 
-	const struct BVHNode* last = nullptr;
-	const struct BVHNode* current = &m_bvh_nodes[model_start];
-	const struct BVHNode* near_node = nullptr;
-	const struct BVHNode* far_node = nullptr;
-	float2 intersection_test_result = r.intersects_aabb(current->bounds);
-	if (intersection_test_result.x >= intersection_test_result.y || intersection_test_result.x > r.t) return; // now we know that the root is intersected and partly closer than the furthest already hit object
+) { // assumes ray intersects
+  // https://www.sci.utah.edu/~wald/Publications/2011/StackFree/sccg2011.pdf
+  uint model_start = m_model_bvh_starts[obj_index];
 
-	for (int step = 0; step < 100000; step++) {
-		if (current->count) { // if in leaf
-			for (int i = current->leftFirst; i < current->leftFirst + current->count; i++) {
-				const uint prim_start = m_model_primitives_starts[obj_index];
-				const Triangle& t = m_triangles[prim_start + m_indices[prim_start + i]];
-				intersect_triangle(t, r);
-			}
-			last = current;
-			if (current->parent == -1) return;
-			current = &m_bvh_nodes[model_start + current->parent];
-			continue;
-		}
+  struct BVHNode last;
+  struct BVHNode current = m_bvh_nodes[model_start];
+  struct BVHNode near_node;
+  struct BVHNode far_node;
 
+  for (int step = 0; step < 100000; step++) {
+    if (current.count) { // if in leaf
+      for (int i = current.leftFirst; i < current.leftFirst + current.count;
+           i++) {
+        uint prim_start = m_model_primitives_starts[obj_index];
+        uint triangle_index = prim_start + m_indices[prim_start + i];
+        struct Triangle t = m_triangles[triangle_index];
+        intersect_triangle(&t, r, triangle_index);
+      }
+      last = current;
+      if (current.parent == -1)
+        return;
+      current = m_bvh_nodes[model_start + current.parent];
+      continue;
+    }
 
-		float dist_left = abs(m_bvh_nodes[model_start + current->leftFirst].bounds.minx - r.o.x) +
-			abs(m_bvh_nodes[model_start + current->leftFirst].bounds.miny - r.o.y) +
-			abs(m_bvh_nodes[model_start + current->leftFirst].bounds.minz - r.o.z);
-		float dist_right = abs(m_bvh_nodes[model_start + current->leftFirst + 1].bounds.minx - r.o.x) +
-			abs(m_bvh_nodes[model_start + current->leftFirst + 1].bounds.miny - r.o.y) +
-			abs(m_bvh_nodes[model_start + current->leftFirst + 1].bounds.minz - r.o.z);
-		if (dist_left < dist_right) {
-			near_node = &m_bvh_nodes[model_start + current->leftFirst];
-			far_node = &m_bvh_nodes[model_start + current->leftFirst + 1];
-		}
-		else {
-			near_node = &m_bvh_nodes[model_start + current->leftFirst + 1];
-			far_node = &m_bvh_nodes[model_start + current->leftFirst];
-		}
+    float dist_left =
+        fabs(m_bvh_nodes[model_start + current.leftFirst].minx - r->o.x) +
+        fabs(m_bvh_nodes[model_start + current.leftFirst].miny - r->o.y) +
+        fabs(m_bvh_nodes[model_start + current.leftFirst].minz - r->o.z);
+    float dist_right =
+        fabs(m_bvh_nodes[model_start + current.leftFirst + 1].minx - r->o.x) +
+        fabs(m_bvh_nodes[model_start + current.leftFirst + 1].miny - r->o.y) +
+        fabs(m_bvh_nodes[model_start + current.leftFirst + 1].minz - r->o.z);
+    if (dist_left < dist_right) {
+      near_node = m_bvh_nodes[model_start + current.leftFirst];
+      far_node = m_bvh_nodes[model_start + current.leftFirst + 1];
+    } else {
+      near_node = m_bvh_nodes[model_start + current.leftFirst + 1];
+      far_node = m_bvh_nodes[model_start + current.leftFirst];
+    }
 
+    if (same_node(last, far_node)) { // just went up
+      last = current;
+      if (current.parent == -1)
+        return;
+      current = m_bvh_nodes[model_start + current.parent];
+      continue;
+    }
 
-		if (last == far_node) { //just went up
-			last = current;
-			if (current->parent == -1) return;
-			current = &m_bvh_nodes[model_start + current->parent];
-			continue;
-		}
+    // either last node is near or parent
 
-		// either last node is near or parent
+    struct BVHNode try_child;
+    if (current.parent == -1) {
+      try_child = (!same_node(last, near_node)) ? near_node : far_node;
+    } else {
+      try_child = (same_node(last, m_bvh_nodes[model_start + current.parent]))
+                      ? near_node
+                      : far_node;
+    }
 
-		const BVHNode* try_child = nullptr;
-		if (current->parent == -1) {
-			try_child = (last != near_node) ? near_node : far_node;
-		}
-		else {
-			try_child = (last == &m_bvh_nodes[model_start + current->parent]) ? near_node : far_node;
-		}
-
-		intersection_test_result = r.intersects_aabb(try_child->bounds);
-		if (intersection_test_result.x < intersection_test_result.y) { // if intersection is found
-			last = current;
-			current = try_child;
-		}
-		else { //either move to far or up
-			if (try_child == near_node) { // move to far
-				last = near_node;
-			}
-			else { // move up
-				last = current;
-				if (current->parent == -1) return;
-				current = &m_bvh_nodes[model_start + current->parent];
-			}
-		}
-	}
+    float2 intersection_test_result = intersects_aabb(&try_child, r);
+    if (intersection_test_result.x <
+        intersection_test_result.y) { // if intersection is found
+      last = current;
+      current = try_child;
+    } else {                                 // either move to far or up
+      if (same_node(try_child, near_node)) { // move to far
+        last = near_node;
+      } else { // move up
+        last = current;
+        if (current.parent == -1)
+          return;
+        current = m_bvh_nodes[model_start + current.parent];
+      }
+    }
+  }
 }
 
-void Scene::intersect_top(Ray& r) const { //assumes ray intersects
-	//https://www.sci.utah.edu/~wald/Publications/2011/StackFree/sccg2011.pdf
-	const BVHNode* last = nullptr;
-	const BVHNode* current = &m_top_bvh_nodes[0];
-	const BVHNode* near_node = nullptr;
-	const BVHNode* far_node = nullptr;
-	float2 intersection_test_result = r.intersects_aabb(current->bounds);
-	if (intersection_test_result.x >= intersection_test_result.y || intersection_test_result.x > r.t) return; // now we know that the root is intersected and partly closer than the furthest already hit object
-	
-	for (int step = 0; step < 100000; step++) {
-		if (current->count) { // if in leaf
-			for (int i = current->leftFirst; i < current->leftFirst + current->count; i++) {
-				TopBVHNodeScene node = m_top_leaves[m_top_indices[i]];
-				r.o -= node.pos;
-				intersect_bot(r, node.obj_index);
-				r.o += node.pos;
-			}
-			last = current;
-			if (current->parent == -1) return;
-			current = &m_top_bvh_nodes[current->parent];
-			continue;
-		}
+__kernel void
+extend(__global struct Ray *ray_data, __global struct BVHNode *m_top_bvh_nodes,
+       __global struct TopBVHNode *m_top_leaves, __global uint *m_top_indices,
+       __global struct BVHNode *m_bvh_nodes,
+       __global uint *m_model_primitives_starts,
+       __global uint *m_model_bvh_starts, __global struct Triangle *m_triangles,
+       __global uint *m_indices, int max_i) {
 
+  uint i = get_global_id(0);
+  if (i > max_i)
+    return;
+  struct Ray r = ray_data[i];
 
-		float dist_left = abs(m_top_bvh_nodes[current->leftFirst].bounds.minx - r.o.x) + 
-			abs(m_top_bvh_nodes[current->leftFirst].bounds.miny - r.o.y) + 
-			abs(m_top_bvh_nodes[current->leftFirst].bounds.minz - r.o.z);
-		float dist_right = abs(m_top_bvh_nodes[current->leftFirst + 1].bounds.minx - r.o.x) +
-			abs(m_top_bvh_nodes[current->leftFirst + 1].bounds.miny - r.o.y) +
-			abs(m_top_bvh_nodes[current->leftFirst + 1].bounds.minz - r.o.z);
-		if (dist_left < dist_right) {
-			near_node = &m_top_bvh_nodes[current->leftFirst];
-			far_node = &m_top_bvh_nodes[current->leftFirst + 1];
-		}
-		else {
-			near_node = &m_top_bvh_nodes[current->leftFirst + 1];
-			far_node = &m_top_bvh_nodes[current->leftFirst];
-		}
+  // https://www.sci.utah.edu/~wald/Publications/2011/StackFree/sccg2011.pdf
+  struct BVHNode last;
+  struct BVHNode current = m_top_bvh_nodes[0];
+  struct BVHNode near_node;
+  struct BVHNode far_node;
+  float2 intersection_test_result = intersects_aabb(&current, &r);
+  if (intersection_test_result.x >= intersection_test_result.y ||
+      intersection_test_result.x > r.t)
+    return; // now we know that the root is intersected and partly closer than
+            // the furthest already hit object
 
+  for (int step = 0; step < 100000; step++) {
+    if (current.count) { // if in leaf
+      for (int i = current.leftFirst; i < current.leftFirst + current.count;
+           i++) {
+        struct TopBVHNode node = m_top_leaves[m_top_indices[i]];
+        r.o -= node.pos;
+        intersect_bot(&r, node.obj, m_bvh_nodes, m_model_primitives_starts,
+                      m_model_bvh_starts, m_triangles, m_indices);
+        r.o += node.pos;
+      }
+      last = current;
+      if (current.parent == -1) {
+        ray_data[i] = r;
+        return;
+      }
+      current = m_top_bvh_nodes[current.parent];
+      continue;
+    }
 
-		if (last == far_node) { //just went up
-			last = current;
-			if (current->parent == -1) return;
-			current = &m_top_bvh_nodes[current->parent];
-			continue;
-		}
+    float dist_left = fabs(m_top_bvh_nodes[current.leftFirst].minx - r.o.x) +
+                      fabs(m_top_bvh_nodes[current.leftFirst].miny - r.o.y) +
+                      fabs(m_top_bvh_nodes[current.leftFirst].minz - r.o.z);
+    float dist_right =
+        fabs(m_top_bvh_nodes[current.leftFirst + 1].minx - r.o.x) +
+        fabs(m_top_bvh_nodes[current.leftFirst + 1].miny - r.o.y) +
+        fabs(m_top_bvh_nodes[current.leftFirst + 1].minz - r.o.z);
+    if (dist_left < dist_right) {
+      near_node = m_top_bvh_nodes[current.leftFirst];
+      far_node = m_top_bvh_nodes[current.leftFirst + 1];
+    } else {
+      near_node = m_top_bvh_nodes[current.leftFirst + 1];
+      far_node = m_top_bvh_nodes[current.leftFirst];
+    }
 
-		// either last node is near or parent
+    if (same_node(last, far_node)) { // just went up
+      last = current;
+      if (current.parent == -1) {
+        ray_data[i] = r;
+        return;
+      };
+      current = m_top_bvh_nodes[current.parent];
+      continue;
+    }
 
-		const BVHNode* try_child = nullptr;
-		if (current->parent == -1) {
-			try_child = (last != near_node) ? near_node : far_node;
-		} else {
-			try_child = (last == &m_top_bvh_nodes[current->parent]) ? near_node : far_node;
-		}
+    // either last node is near or parent
 
-		intersection_test_result = r.intersects_aabb(try_child->bounds);
-		if (intersection_test_result.x < intersection_test_result.y) { // if intersection is found
-			last = current;
-			current = try_child;
-		} else { //either move to far or up
-			if (try_child == near_node) { // move to far
-				last = near_node;
-			} else { // move up
-				last = current;
-				if (current->parent == -1) return;
-				current = &m_top_bvh_nodes[current->parent];
-			}
-		}
-	}
-}
+    struct BVHNode try_child;
+    if (current.parent == -1) {
+      try_child = (!same_node(last, near_node)) ? near_node : far_node;
+    } else {
+      try_child = (same_node(last, m_top_bvh_nodes[current.parent])) ? near_node
+                                                                     : far_node;
+    }
 
-
-
-
-
-
-
-
-__kernel void extend(
-	__global struct Ray* ray_data,
-	__global struct BVHNode* m_top_bvh_nodes,
-	__global struct TopBVHNode* m_top_leaves,
-	__global uint* m_top_indices,
-	__global struct BVHNode* m_bvh_nodes,
-	__global uint* m_model_primitives_starts,
-	__global uint* m_model_bvh_starts,
-	__global struct Triangle* m_triangles,
-	__global uint* m_indices
-	
-	) {
-	uint i = get_global_id( 0 );
-	Ray& r = ray_data[i];
-	find_intersection(r);
+    intersection_test_result = intersects_aabb(&try_child, &r);
+    if (intersection_test_result.x <
+        intersection_test_result.y) { // if intersection is found
+      last = current;
+      current = try_child;
+    } else {                                 // either move to far or up
+      if (same_node(try_child, near_node)) { // move to far
+        last = near_node;
+      } else { // move up
+        last = current;
+        if (current.parent == -1) {
+          ray_data[i] = r;
+          return;
+        };
+        current = m_top_bvh_nodes[current.parent];
+      }
+    }
+  }
 }
