@@ -94,7 +94,7 @@ void Scene::trace_scene(
 	Buffer b_model_bvh_starts = Buffer(sizeof(uint) * m_model_bvh_starts.size() / 4, Buffer::DEFAULT, m_model_bvh_starts.data());
 	Buffer b_triangles = Buffer(sizeof(Triangle) * m_triangles.size() / 4, Buffer::DEFAULT, m_triangles.data());
 	Buffer b_indices = Buffer(sizeof(uint) * m_indices.size() / 4, Buffer::DEFAULT, m_indices.data());
-	Buffer b_rays = Buffer(sizeof(uint) / 4, Buffer::DEFAULT, m_rays.get());
+	Buffer b_rays_count = Buffer(sizeof(uint) / 4, Buffer::DEFAULT, m_rays_count.get());
 	b_top_bvh_nodes.CopyToDevice();
 	b_top_leaves.CopyToDevice();
 	b_top_indices.CopyToDevice();
@@ -103,12 +103,6 @@ void Scene::trace_scene(
 	b_model_bvh_starts.CopyToDevice();
 	b_triangles.CopyToDevice();
 	b_indices.CopyToDevice();
-
-
-
-
-
-
 
 	ray_extend_kernel->SetArgument(1, &b_top_bvh_nodes);
 	ray_extend_kernel->SetArgument(2, &b_top_leaves);
@@ -120,24 +114,46 @@ void Scene::trace_scene(
 	ray_extend_kernel->SetArgument(8, &b_indices);
 
 
+	ray_shade_kernel->SetArgument(0, &b_rays_count);
+	ray_shade_kernel->SetArgument(1, rays_buffer.get());
+	ray_shade_kernel->SetArgument(2, rays2_buffer.get());
+	ray_shade_kernel->SetArgument(3, &b_triangles);
+
+
+
 	std::atomic<int> counter;
 	for (int i = 0; i < bounces; i++) {
-		m_rays[0] = 0;
-		b_rays.CopyToDevice();
-		counter = 0;
+
 		Timer t = Timer();
+		counter = 0;
+
+		//extend
 		if (i != 0) active_rays ? rays2_buffer->CopyToDevice() : rays_buffer->CopyToDevice();
 		ray_extend_kernel->SetArgument(0, active_rays ? rays2_buffer.get() : rays_buffer.get());
 		ray_extend_kernel->SetArgument(9, ray_count-1);
-		printf("%i\n", i);
-		//ray_extend_kernel->Run(ray_count + (32 - (ray_count % 32)), 32);
-		active_rays ? rays2_buffer->CopyFromDevice() : rays_buffer->CopyFromDevice();
-		printf("copying took %f seconds\n", t.elapsed());
+		ray_extend_kernel->Run(ray_count + (32 - (ray_count % 32)), 32);
+		//active_rays ? rays2_buffer->CopyFromDevice() : rays_buffer->CopyFromDevice();
+
+		//shade
+		m_rays_count[0] = 0;
+		b_rays_count.CopyToDevice();
+		ray_shade_kernel->SetArgument(4, (int)active_rays);
+		ray_shade_kernel->SetArgument(5, rand * (int)screen_width * (int)screen_height * i);
+		ray_shade_kernel->SetArgument(6, ray_count-1);
+		//ray_shade_kernel->Run(ray_count + (32 - (ray_count % 32)), 32);
+		rays_buffer->CopyFromDevice();
+		rays2_buffer->CopyFromDevice();
+		b_rays_count.CopyFromDevice();
+		//counter = m_rays_count[0];
+
+		printf("%i gpu took %f seconds with %i rays left\n", i, t.elapsed(), ray_count);
+		t = Timer();
 		run_multithreaded(nthreads, ray_count, 1, [this, &counter, &screendata, &rand, screen_width, &screen_height](int x, int y) {
-			extend(x);
+			//extend(x);
 			shade(x, rand * (screen_width * screen_height) + x, counter);
 			connect(screendata, x);
 			});
+		printf("%i cpu took %f seconds with %i rays left\n", i, t.elapsed(), ray_count);
 		ray_count = counter;
 		if (ray_count == 0) break;
 		active_rays = active_rays ? false : true;
@@ -152,7 +168,7 @@ void Scene::init_buffers(uint width, uint height){
 	
 	rays = std::make_unique<Ray[]>(width*height);
 	rays2 = std::make_unique<Ray[]>(width * height);
-	m_rays = std::make_unique<uint[]>(1);
+	m_rays_count = std::make_unique<uint[]>(1);
 	rays_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays.get());
 	rays2_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays2.get());
 	active_rays = false;

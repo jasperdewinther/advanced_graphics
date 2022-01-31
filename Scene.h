@@ -29,6 +29,7 @@ public:
 	std::unique_ptr<Buffer> rays2_buffer;
 	std::unique_ptr<Kernel> ray_gen_kernel = std::make_unique<Kernel>((char*)"ray_gen.cl", (char*)"ray_gen");
 	std::unique_ptr<Kernel> ray_extend_kernel = std::make_unique<Kernel>((char*)"ray_extend.cl", (char*)"extend");
+	std::unique_ptr<Kernel> ray_shade_kernel = std::make_unique<Kernel>((char*)"ray_shade.cl", (char*)"shade");
 
 	float3 skycolor = float3(0, 0, 0);
 
@@ -53,7 +54,7 @@ private:
 	std::vector<uint> m_model_bvh_starts;
 	std::vector<Triangle> m_triangles;
 	std::vector<uint> m_indices;
-	std::unique_ptr<uint[]> m_rays;
+	std::unique_ptr<uint[]> m_rays_count;
 
 	void init_buffers(uint width, uint height);
 	void generate(

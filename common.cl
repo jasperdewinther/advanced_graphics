@@ -1,4 +1,4 @@
-
+__constant float epsilon = 0.0001;
 
 enum Material {
 	red = 0,

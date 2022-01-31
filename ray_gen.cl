@@ -39,7 +39,7 @@ __kernel void ray_gen(__global struct Ray *ray_data, int width, int height,
       .t = 999999.f,
       .pixel_id = pixel_index,
       .E = {0.f, 0.f, 0.f, 0.f},
-      .T = {1.f, 1.f, 1.f, 1.f},
+      .T = {1.f, 1.f, 1.f, 0.f},
       .hitptr = 4294967295,
   };
 
