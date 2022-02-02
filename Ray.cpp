@@ -34,6 +34,25 @@ float2 Ray::intersects_aabb(const BVHNode & box)
 	float tFar = min(min(t2x, t2y), t2z);
 	return float2(tNear, tFar);
 }
+float2 Ray::intersects_aabb(const BVHNode* box)
+{
+	//https://gist.github.com/DomNomNom/46bb1ce47f68d255fd5d
+	float tMinx = (box->minx - o.x) * invDir.x;
+	float tMiny = (box->miny - o.y) * invDir.y;
+	float tMinz = (box->minz - o.z) * invDir.z;
+	float tMaxx = (box->maxx - o.x) * invDir.x;
+	float tMaxy = (box->maxy - o.y) * invDir.y;
+	float tMaxz = (box->maxz - o.z) * invDir.z;
+	float t1x = min(tMinx, tMaxx);
+	float t1y = min(tMiny, tMaxy);
+	float t1z = min(tMinz, tMaxz);
+	float t2x = max(tMinx, tMaxx);
+	float t2y = max(tMiny, tMaxy);
+	float t2z = max(tMinz, tMaxz);
+	float tNear = max(max(t1x, t1y), t1z);
+	float tFar = min(min(t2x, t2y), t2z);
+	return float2(tNear, tFar);
+}
 
 
 void generate_primary_rays(
@@ -80,8 +99,8 @@ void generate_primary_rays(
 	kernel->SetArgument(14, camerapos.y);
 	kernel->SetArgument(15, camerapos.z);
 	kernel->SetArgument(16, (int)(sizeof(Ray)/sizeof(float)));
-	kernel->SetArgument(17, (int)noise);
-	kernel->Run2D(int2(width + (4-(width%4)), height + (4-(height%4))), int2(4,4));
-	buffer->CopyFromDevice();
+	kernel->SetArgument(17, (int)0);
+	kernel->Run2D(int2(width + (16-(width%16)), height + (16-(height%16))), int2(16,16));
+	
 }
 

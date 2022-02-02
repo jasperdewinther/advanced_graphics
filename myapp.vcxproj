@@ -185,6 +185,7 @@
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="bilateral_filter.cl" />
     <None Include="cl\kernels.cl" />
     <None Include="common.cl" />
     <None Include="ray_connect.cl" />

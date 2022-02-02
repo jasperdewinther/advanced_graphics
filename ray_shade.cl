@@ -11,19 +11,21 @@ float3 reflect(float3 incidentVec, float3 normal) {
   return incidentVec - 2.f * dot(incidentVec, normal) * normal;
 }
 
-float3 CosineWeightedDiffuseReflection(float3 normal, int random_number) {
-  struct xorshift_state rand = {random_number};
-  XorRandomFloat(&rand); // TODO find out why these two initialising randoms are
-                         // needed for proper distribution
-  XorRandomFloat(&rand);
-  float r1 = XorRandomFloat(&rand), r0 = XorRandomFloat(&rand);
+float3 CosineWeightedDiffuseReflection(float3 normal,
+                                       struct xorshift_state *rand_state) {
+  // XorRandomFloat(rand_state); // TODO find out why these two initialising
+  // randoms are needed for proper distribution
+  XorRandomFloat(rand_state);
+  // XorRandomFloat(rand_state);
+  // XorRandomFloat(rand_state);
+  float r0 = XorRandomFloat(rand_state), r1 = XorRandomFloat(rand_state);
   float r = sqrt(r0);
   float theta = 2 * M_PI_F * r1;
   float x = r * cos(theta);
   float y = r * sin(theta);
   float3 dir = {x, y, sqrt(1 - r0)};
   dir = normalize(dir);
-  return dot(dir, normal) > 0.f ? dir : dir * -1;
+  return (dot(dir, normal) > 0.f) ? dir : dir * -1;
 }
 
 struct transparency_calc_result
@@ -101,6 +103,7 @@ __kernel void shade(__global uint *new_ray_index, __global struct Ray *rays,
 
   if (r.hitptr == 4294967295)
     return; // if default value
+
   struct MaterialData material = materials[m_triangles[r.hitptr].m];
   float4 albedo = material.color;
   if (material.isLight) {
@@ -170,7 +173,7 @@ __kernel void shade(__global uint *new_ray_index, __global struct Ray *rays,
       rays2[atomic_add(new_ray_index, 1)] = new_r;
     return;
   } else {
-    float3 R = CosineWeightedDiffuseReflection(N.xyz, rand + i);
+    float3 R = CosineWeightedDiffuseReflection(N.xyz, &rand_state);
     float4 BRDF = albedo / M_PI_F;
     float PDF = dot(N.xyz, R) / M_PI_F;
     struct Ray new_r = build_ray(

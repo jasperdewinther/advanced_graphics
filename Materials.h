@@ -11,9 +11,8 @@ enum Material {
 	reflective_blue = 7,
 	white_light = 8,
 	emerald = 9,
-	bright_green = 10,
-	yellow = 11,
-	green_light = 12,
+	yellow = 10,
+	green_light = 11,
 };
 
 struct MaterialData
@@ -32,7 +31,7 @@ struct MaterialData
 	);
 };
 
-const uint MATERIALCOUNT = 13;
+const uint MATERIALCOUNT = 12;
 const MaterialData materials[MATERIALCOUNT] = {
 	MaterialData(float3(1.f,0.f,0.f), 0.0f),
 	MaterialData(float3(1.f,1.f,1.f), 1.0f),
@@ -44,7 +43,6 @@ const MaterialData materials[MATERIALCOUNT] = {
 	MaterialData(float3(0.1f,0.6f,0.9f), 0.9f),
 	MaterialData(float3(10.f,10.f,10.f), 0.0f, 1.f,0.f, true),
 	MaterialData(float3(0.314f,0.784f,0.471f), 0.0f, 0.3f, 1.57f),
-	MaterialData(float3(0.66, 0.859, 0.118), 0.f),
 	MaterialData(float3(0.878, 0.906, 0.133), 0.f),
 	MaterialData(float3(6.6, 8.59, 1.18), 0.f, 1, 0, true),
 };

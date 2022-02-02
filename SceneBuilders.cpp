@@ -29,13 +29,20 @@ Scene SceneBuilders::billion_triangles_bunnies()
 {
 	Scene s = Scene();
 
+	s.triangles.push_back({
+	Triangle(float3(-200, 0, -200),float3(-200, 0, 200), float3(200, 0, -200), float3(0,1,0), Material::white_light),
+	Triangle(float3(200, 0, 200),float3(-200, 0, 200), float3(200, 0, -200), float3(0,1,0), Material::white_light),
+		});
+
 
 	s.triangles.push_back(get_mesh_from_file("./assets/bunny.obj", 1.f, Material::red));
 	s.bvhs.emplace_back(s.triangles[0], true);
+	s.bvhs.emplace_back(s.triangles[1], true);
 	
 	std::vector<TopBVHNode> bvh_nodes;
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(0,0,0)});
 	for (int i = 0; i < 10000; i++) { //each bunny has 100k+ triangles
-		bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(-((float)i / 100) * 3,0,-(i % 100) * 3)});
+		bvh_nodes.push_back(TopBVHNode{ &s.bvhs[1], float3(-((float)i / 100) * 3,0,-(i % 100) * 3)});
 	}
 	s.bvh = TopLevelBVH(bvh_nodes, true);
 
@@ -45,6 +52,7 @@ Scene SceneBuilders::billion_triangles_bunnies()
 
 Scene SceneBuilders::billion_triangles_buddhas() {
 	Scene s = Scene();
+
 
 	s.triangles.push_back(get_mesh_from_file("./assets/buddha.obj", 3.f, Material::red));
 	s.bvhs.emplace_back(s.triangles[0], true);
@@ -62,6 +70,10 @@ Scene SceneBuilders::moana_hibiscus_tree()
 {
 	Scene s = Scene();
 
+	s.triangles.push_back({
+	Triangle(float3(-20, 0, -20),float3(-20, 0, 20), float3(20, 0, -20), float3(0,1,0), Material::reflective_blue),
+	Triangle(float3(20, 0, 20),float3(-20, 0, 20), float3(20, 0, -20), float3(0,1,0), Material::reflective_blue),
+		});
 
 	s.triangles.push_back(get_mesh_from_file("./assets/isHibiscus.obj", 0.04f, Material::red)); //of course we trace a literal tree
 	s.bvhs.emplace_back(s.triangles[0], true);
@@ -78,13 +90,18 @@ Scene SceneBuilders::moana_hibiscus_tree()
 Scene SceneBuilders::teapot()
 {
 	Scene s = Scene();
-
+	s.triangles.push_back({
+		Triangle(float3(-20, 0, -20),float3(-20, 0, 20), float3(20, 0, -20), float3(0,1,0), Material::white),
+		Triangle(float3(20, 0, 20),float3(-20, 0, 20), float3(20, 0, -20), float3(0,1,0), Material::white),
+		});
 
 	s.triangles.push_back(get_mesh_from_file("./assets/teapot.obj", 1.f, Material::white_light));
 	s.bvhs.emplace_back(s.triangles[0], true);
+	s.bvhs.emplace_back(s.triangles[1], true);
 
 	std::vector<TopBVHNode> bvh_nodes;
-	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(0,1,0) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[0], float3(0,0,0) });
+	bvh_nodes.push_back(TopBVHNode{ &s.bvhs[1], float3(0,1,0) });
 	s.bvh = TopLevelBVH(bvh_nodes, true);
 
 

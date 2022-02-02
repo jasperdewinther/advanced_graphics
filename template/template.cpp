@@ -900,12 +900,16 @@ Buffer::Buffer( unsigned int N, unsigned int t, void* ptr )
 // ----------------------------------------------------------------------------
 Buffer::~Buffer()
 {
-	if (ownData)
+	/*if (ownData)
 	{
 		delete hostBuffer;
 		hostBuffer = 0;
 	}
-	if ((type & (TEXTURE | TARGET)) == 0) clReleaseMemObject( deviceBuffer );
+	if ((type & (TEXTURE | TARGET)) == 0) clReleaseMemObject( deviceBuffer );*/
+}
+
+void Buffer::delete_buffer() {
+	clReleaseMemObject(deviceBuffer);
 }
 
 // CopyToDevice method

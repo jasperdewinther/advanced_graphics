@@ -16,12 +16,12 @@ float XorRandomFloat(xorshift_state* s)
 	return xorshift32(s) * 2.3283064365387e-10f;
 }
 
-float3 CosineWeightedDiffuseReflection(float3 normal, int random_number)
+float3 CosineWeightedDiffuseReflection(float3 normal, xorshift_state& rand_state)
 {
-	xorshift_state rand = { random_number };
-	XorRandomFloat(&rand); //TODO find out why these two initialising randoms are needed for proper distribution
-	XorRandomFloat(&rand);
-	float r1 = XorRandomFloat(&rand), r0 = XorRandomFloat(&rand);
+	XorRandomFloat(&rand_state); //TODO find out why these two initialising randoms are needed for proper distribution
+	//XorRandomFloat(&rand_state);
+	//XorRandomFloat(&rand_state);
+	float r1 = XorRandomFloat(&rand_state), r0 = XorRandomFloat(&rand_state);
 	float r = sqrt(r0);
 	float theta = 2 * PI * r1;
 	float x = r * cosf(theta);
@@ -78,23 +78,115 @@ void Scene::trace_scene(
 	const float fov,
 	const uint bounces,
 	const int rand,
-	const uint nthreads
+	const uint nthreads,
+	const bool use_gpu
 ) {
-	if (rays_buffer.get() == nullptr || rays_buffer.get()->size != sizeof(Ray) * screen_width * screen_height / 4) init_buffers(screen_width, screen_height);
-
+	if (rays_buffer.get() == nullptr || rays_buffer.get()->size != sizeof(Ray) * screen_width * screen_height / 4) {
+		init_buffers(screen_width, screen_height);
+		fill_gpu_buffers(screen_width, screen_height);
+	}
 	active_rays = false;
-	generate(screen_width, screen_height, camerapos, camera_direction, fov, rand, true);
 	ray_count = screen_width * screen_height;
+	std::atomic<int> counter;
+	Timer t = Timer();
 
-	Buffer b_top_bvh_nodes = Buffer(sizeof(BVHNode) * m_top_bvh_nodes.size() / 4, Buffer::DEFAULT, m_top_bvh_nodes.data());
-	Buffer b_top_leaves = Buffer(sizeof(TopBVHNodeScene) * m_top_leaves.size() / 4, Buffer::DEFAULT, m_top_leaves.data());
-	Buffer b_top_indices = Buffer(sizeof(uint) * m_top_indices.size() / 4, Buffer::DEFAULT, m_top_indices.data());
-	Buffer b_bvh_nodes = Buffer(sizeof(BVHNode) * m_bvh_nodes.size() / 4, Buffer::DEFAULT, m_bvh_nodes.data());
-	Buffer b_model_primitives_starts = Buffer(sizeof(uint) * m_model_primitives_starts.size() / 4, Buffer::DEFAULT, m_model_primitives_starts.data());
-	Buffer b_model_bvh_starts = Buffer(sizeof(uint) * m_model_bvh_starts.size() / 4, Buffer::DEFAULT, m_model_bvh_starts.data());
-	Buffer b_triangles = Buffer(sizeof(Triangle) * m_triangles.size() / 4, Buffer::DEFAULT, m_triangles.data());
-	Buffer b_indices = Buffer(sizeof(uint) * m_indices.size() / 4, Buffer::DEFAULT, m_indices.data());
-	Buffer b_rays_count = Buffer(sizeof(uint) / 4, Buffer::DEFAULT, m_rays_count.get());
+
+	if (use_gpu) {
+		generate(screen_width, screen_height, camerapos, camera_direction, fov, rand, true);
+
+		Buffer b_screendata = Buffer(sizeof(float3) * screen_width * screen_height / 4, Buffer::DEFAULT, screendata);
+
+
+		ray_extend_kernel->SetArgument(1, &b_top_bvh_nodes);
+		ray_extend_kernel->SetArgument(2, &b_top_leaves);
+		ray_extend_kernel->SetArgument(3, &b_top_indices);
+		ray_extend_kernel->SetArgument(4, &b_bvh_nodes);
+		ray_extend_kernel->SetArgument(5, &b_model_primitives_starts);
+		ray_extend_kernel->SetArgument(6, &b_model_bvh_starts);
+		ray_extend_kernel->SetArgument(7, &b_triangles);
+		ray_extend_kernel->SetArgument(8, &b_indices);
+
+
+		ray_shade_kernel->SetArgument(0, &b_rays_count);
+		ray_shade_kernel->SetArgument(1, rays_buffer.get());
+		ray_shade_kernel->SetArgument(2, rays2_buffer.get());
+		ray_shade_kernel->SetArgument(3, &b_triangles);
+
+		ray_connect_kernel->SetArgument(0, &b_screendata);
+		ray_connect_kernel->SetArgument(1, rays_buffer.get());
+		ray_connect_kernel->SetArgument(2, rays2_buffer.get());
+
+
+		for (int i = 0; i < bounces; i++) {
+			counter = 0;
+			const uint t_per_w = 256;
+
+			//extend
+			ray_extend_kernel->SetArgument(0, active_rays ? rays2_buffer.get() : rays_buffer.get());
+			ray_extend_kernel->SetArgument(9, ray_count - 1);
+			ray_extend_kernel->Run(ray_count + (t_per_w - (ray_count % t_per_w)), t_per_w);
+
+			//shade
+			m_rays_count[0] = 0;
+			b_rays_count.CopyToDevice();
+			ray_shade_kernel->SetArgument(4, (int)active_rays);
+			ray_shade_kernel->SetArgument(5, rand);
+			ray_shade_kernel->SetArgument(6, ray_count - 1);
+			ray_shade_kernel->Run(ray_count + (t_per_w - (ray_count % t_per_w)), t_per_w);
+			b_rays_count.CopyFromDevice();
+			counter = m_rays_count[0];
+
+			//connect
+			ray_connect_kernel->SetArgument(3, (int)active_rays);
+			ray_connect_kernel->SetArgument(4, ray_count - 1);
+			ray_connect_kernel->Run(ray_count + (t_per_w - (ray_count % t_per_w)), t_per_w);
+
+			ray_count = counter;
+			if (ray_count == 0) break;
+			active_rays = active_rays ? false : true;
+		}
+		printf("took %f seconds\n", t.elapsed());
+		b_screendata.CopyFromDevice();
+		b_screendata.delete_buffer();
+	} else {
+		generate(screen_width, screen_height, camerapos, camera_direction, fov, rand, true);
+		rays_buffer->CopyFromDevice();
+		for (int i = 0; i < bounces; i++) {
+			counter = 0;
+			run_multithreaded(nthreads, ray_count, 1, [this, &counter, &screendata, &rand, screen_width, &screen_height, &camerapos](int x, int y) {
+				extend(x);
+				shade(x, rand, counter);
+				connect(screendata, x, camerapos);
+				});
+			ray_count = counter;
+			if (ray_count == 0) break;
+			active_rays = active_rays ? false : true;
+		}
+		
+	}
+}
+
+void Scene::fill_gpu_buffers(uint screen_width, uint screen_height) {
+	b_top_bvh_nodes.delete_buffer();
+	b_top_leaves.delete_buffer();
+	b_top_indices.delete_buffer();
+	b_bvh_nodes.delete_buffer();
+	b_model_primitives_starts.delete_buffer();
+	b_model_bvh_starts.delete_buffer();
+	b_triangles.delete_buffer();
+	b_indices.delete_buffer();
+	b_rays_count.delete_buffer();
+
+	b_top_bvh_nodes = Buffer(sizeof(BVHNode) * m_top_bvh_nodes.size() / 4, Buffer::DEFAULT, m_top_bvh_nodes.data());
+	b_top_leaves = Buffer(sizeof(TopBVHNodeScene) * m_top_leaves.size() / 4, Buffer::DEFAULT, m_top_leaves.data());
+	b_top_indices = Buffer(sizeof(uint) * m_top_indices.size() / 4, Buffer::DEFAULT, m_top_indices.data());
+	b_bvh_nodes = Buffer(sizeof(BVHNode) * m_bvh_nodes.size() / 4, Buffer::DEFAULT, m_bvh_nodes.data());
+	b_model_primitives_starts = Buffer(sizeof(uint) * m_model_primitives_starts.size() / 4, Buffer::DEFAULT, m_model_primitives_starts.data());
+	b_model_bvh_starts = Buffer(sizeof(uint) * m_model_bvh_starts.size() / 4, Buffer::DEFAULT, m_model_bvh_starts.data());
+	b_triangles = Buffer(sizeof(Triangle) * m_triangles.size() / 4, Buffer::DEFAULT, m_triangles.data());
+	b_indices = Buffer(sizeof(uint) * m_indices.size() / 4, Buffer::DEFAULT, m_indices.data());
+	b_rays_count = Buffer(sizeof(uint) / 4, Buffer::DEFAULT, m_rays_count.get());
+	
 	b_top_bvh_nodes.CopyToDevice();
 	b_top_leaves.CopyToDevice();
 	b_top_indices.CopyToDevice();
@@ -103,64 +195,6 @@ void Scene::trace_scene(
 	b_model_bvh_starts.CopyToDevice();
 	b_triangles.CopyToDevice();
 	b_indices.CopyToDevice();
-
-	ray_extend_kernel->SetArgument(1, &b_top_bvh_nodes);
-	ray_extend_kernel->SetArgument(2, &b_top_leaves);
-	ray_extend_kernel->SetArgument(3, &b_top_indices);
-	ray_extend_kernel->SetArgument(4, &b_bvh_nodes);
-	ray_extend_kernel->SetArgument(5, &b_model_primitives_starts);
-	ray_extend_kernel->SetArgument(6, &b_model_bvh_starts);
-	ray_extend_kernel->SetArgument(7, &b_triangles);
-	ray_extend_kernel->SetArgument(8, &b_indices);
-
-
-	ray_shade_kernel->SetArgument(0, &b_rays_count);
-	ray_shade_kernel->SetArgument(1, rays_buffer.get());
-	ray_shade_kernel->SetArgument(2, rays2_buffer.get());
-	ray_shade_kernel->SetArgument(3, &b_triangles);
-
-
-
-	std::atomic<int> counter;
-	for (int i = 0; i < bounces; i++) {
-
-		Timer t = Timer();
-		counter = 0;
-
-		//extend
-		if (i != 0) active_rays ? rays2_buffer->CopyToDevice() : rays_buffer->CopyToDevice();
-		ray_extend_kernel->SetArgument(0, active_rays ? rays2_buffer.get() : rays_buffer.get());
-		ray_extend_kernel->SetArgument(9, ray_count-1);
-		ray_extend_kernel->Run(ray_count + (32 - (ray_count % 32)), 32);
-		//active_rays ? rays2_buffer->CopyFromDevice() : rays_buffer->CopyFromDevice();
-
-		//shade
-		m_rays_count[0] = 0;
-		b_rays_count.CopyToDevice();
-		ray_shade_kernel->SetArgument(4, (int)active_rays);
-		ray_shade_kernel->SetArgument(5, rand * (int)screen_width * (int)screen_height * i);
-		ray_shade_kernel->SetArgument(6, ray_count-1);
-		//ray_shade_kernel->Run(ray_count + (32 - (ray_count % 32)), 32);
-		rays_buffer->CopyFromDevice();
-		rays2_buffer->CopyFromDevice();
-		b_rays_count.CopyFromDevice();
-		//counter = m_rays_count[0];
-
-		printf("%i gpu took %f seconds with %i rays left\n", i, t.elapsed(), ray_count);
-		t = Timer();
-		run_multithreaded(nthreads, ray_count, 1, [this, &counter, &screendata, &rand, screen_width, &screen_height](int x, int y) {
-			//extend(x);
-			shade(x, rand * (screen_width * screen_height) + x, counter);
-			connect(screendata, x);
-			});
-		printf("%i cpu took %f seconds with %i rays left\n", i, t.elapsed(), ray_count);
-		ray_count = counter;
-		if (ray_count == 0) break;
-		active_rays = active_rays ? false : true;
-		
-
-	}
-	
 }
 
 void Scene::init_buffers(uint width, uint height){
@@ -169,6 +203,16 @@ void Scene::init_buffers(uint width, uint height){
 	rays = std::make_unique<Ray[]>(width*height);
 	rays2 = std::make_unique<Ray[]>(width * height);
 	m_rays_count = std::make_unique<uint[]>(1);
+	
+	normals_image = std::make_unique<float3[]>(width * height);
+	hitpos_image = std::make_unique<float3[]>(width * height);
+	b_normals_image.delete_buffer();
+	b_hitpos_image.delete_buffer();
+	b_normals_image = Buffer(sizeof(float3) * width * height/4, Buffer::DEFAULT, normals_image.get());
+	b_hitpos_image = Buffer(sizeof(float3) * width * height/4, Buffer::DEFAULT, hitpos_image.get());
+
+	if (rays_buffer.get() != nullptr) rays_buffer->delete_buffer();
+	if (rays2_buffer.get() != nullptr) rays2_buffer->delete_buffer();
 	rays_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays.get());
 	rays2_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays2.get());
 	active_rays = false;
@@ -236,17 +280,20 @@ void Scene::extend(uint i) {
 }
 void Scene::shade(uint i, const int rand, std::atomic<int>& new_ray_index) {
 	Ray& r = active_rays ? rays2[i] : rays[i];
-	if (r.hitptr == 4294967295) return; //if default value
+	if (r.hitptr == 4294967295)return; //if default value
 	MaterialData material = materials[m_triangles[r.hitptr].m];
 	float3 albedo = material.color;
+
+	
 	if (material.isLight) {
 		r.E = r.T * albedo;
 		return;
 	};
-	float3 N = m_triangles[r.hitptr].get_normal();
 	float3 I = r.o + r.d * r.t;
+	float3 N = m_triangles[r.hitptr].get_normal();
 
-	xorshift_state rand_state = { rand };
+
+	xorshift_state rand_state = { rand + i };
 	XorRandomFloat(&rand_state);
 
 	if (material.transparent < 1.f) {
@@ -281,7 +328,7 @@ void Scene::shade(uint i, const int rand, std::atomic<int>& new_ray_index) {
 		return;
 	}
 	else {
-		float3 R = CosineWeightedDiffuseReflection(N, rand);
+		float3 R = CosineWeightedDiffuseReflection(N, rand_state);
 		float3 BRDF = albedo / PI;
 		float PDF = dot(N, R) / PI;
 		Ray new_r = Ray(I + R * epsilon, R, r.pixel_id, r.E, BRDF * (r.T * dot(N, R) / PDF)); // todo check E and T calculations
@@ -290,65 +337,84 @@ void Scene::shade(uint i, const int rand, std::atomic<int>& new_ray_index) {
 	}
 }
 
-void Scene::connect(float3* screendata, uint i){
+void Scene::connect(float3* screendata, uint i, float3 camerapos){
 	Ray& r = active_rays ? rays2[i] : rays[i];
 	screendata[r.pixel_id] = r.E;
+	if (r.o.x < camerapos.x + epsilon && r.o.x > camerapos.x - epsilon && 
+		r.o.y < camerapos.y + epsilon && r.o.y > camerapos.y - epsilon && 
+		r.o.z < camerapos.z + epsilon && r.o.z > camerapos.z - epsilon) {
+		if (r.hitptr == 4294967295) {
+			normals_image[r.pixel_id] = float3(0, 0, 0);
+			hitpos_image[r.pixel_id] = float3(4294967295, 4294967295, 4294967295);
+		}
+		else {
+			MaterialData material = materials[m_triangles[r.hitptr].m];
+			if (material.specularity > 0.0+epsilon || material.transparent < 1.f-epsilon) {
+				normals_image[r.pixel_id] = float3(0, 0, 0);
+				hitpos_image[r.pixel_id] = float3(4294967295, 4294967295, 4294967295);
+			}
+			else {
+				normals_image[r.pixel_id] = m_triangles[r.hitptr].get_normal();
+				hitpos_image[r.pixel_id] = r.o + r.d * r.t;
+			}
+		}
+	}
 }
 
 void Scene::intersect_top(Ray& r) const { //assumes ray intersects
 	//https://www.sci.utah.edu/~wald/Publications/2011/StackFree/sccg2011.pdf
-	BVHNode last;
-	BVHNode current = m_top_bvh_nodes[0];
-	BVHNode near_node;
-	BVHNode far_node;
+	const BVHNode* last;
+	const BVHNode* current = &m_top_bvh_nodes[0];
+	const BVHNode* near_node;
+	const BVHNode* far_node;
 	float2 intersection_test_result = r.intersects_aabb(current);
 	if (intersection_test_result.x >= intersection_test_result.y || intersection_test_result.x > r.t) return; // now we know that the root is intersected and partly closer than the furthest already hit object
 	
 	for (int step = 0; step < 100000; step++) {
-		if (current.count) { // if in leaf
-			for (int i = current.leftFirst; i < current.leftFirst + current.count; i++) {
+		if (current->count) { // if in leaf
+			for (int i = current->leftFirst; i < current->leftFirst + current->count; i++) {
 				TopBVHNodeScene node = m_top_leaves[m_top_indices[i]];
 				r.o -= node.pos;
 				intersect_bot(r, node.obj_index);
 				r.o += node.pos;
 			}
 			last = current;
-			if (current.parent == -1) return;
-			current = m_top_bvh_nodes[current.parent];
+			if (current->parent == -1) return;
+			current = &m_top_bvh_nodes[current->parent];
 			continue;
 		}
 
 
-		float dist_left = abs(m_top_bvh_nodes[current.leftFirst].minx - r.o.x) + 
-			abs(m_top_bvh_nodes[current.leftFirst].miny - r.o.y) + 
-			abs(m_top_bvh_nodes[current.leftFirst].minz - r.o.z);
-		float dist_right = abs(m_top_bvh_nodes[current.leftFirst + 1].minx - r.o.x) +
-			abs(m_top_bvh_nodes[current.leftFirst + 1].miny - r.o.y) +
-			abs(m_top_bvh_nodes[current.leftFirst + 1].minz - r.o.z);
+		float dist_left = abs(m_top_bvh_nodes[current->leftFirst].minx - r.o.x) + 
+			abs(m_top_bvh_nodes[current->leftFirst].miny - r.o.y) + 
+			abs(m_top_bvh_nodes[current->leftFirst].minz - r.o.z);
+		float dist_right = abs(m_top_bvh_nodes[current->leftFirst + 1].minx - r.o.x) +
+			abs(m_top_bvh_nodes[current->leftFirst + 1].miny - r.o.y) +
+			abs(m_top_bvh_nodes[current->leftFirst + 1].minz - r.o.z);
 		if (dist_left < dist_right) {
-			near_node = m_top_bvh_nodes[current.leftFirst];
-			far_node = m_top_bvh_nodes[current.leftFirst + 1];
+			near_node = &m_top_bvh_nodes[current->leftFirst];
+			far_node = &m_top_bvh_nodes[current->leftFirst + 1];
 		}
 		else {
-			near_node = m_top_bvh_nodes[current.leftFirst + 1];
-			far_node = m_top_bvh_nodes[current.leftFirst];
+			near_node = &m_top_bvh_nodes[current->leftFirst + 1];
+			far_node = &m_top_bvh_nodes[current->leftFirst];
 		}
 
 
-		if (same_node(last, far_node)) { //just went up
+		if (last == far_node) { //just went up
 			last = current;
-			if (current.parent == -1) return;
-			current = m_top_bvh_nodes[current.parent];
+			if (current->parent == -1) return;
+			current = &m_top_bvh_nodes[current->parent];
 			continue;
 		}
 
 		// either last node is near or parent
 
-		BVHNode try_child;
-		if (current.parent == -1) {
-			try_child = (!same_node(last,near_node)) ? near_node : far_node;
+		const BVHNode* try_child;
+		if (current->parent == -1) {
+			try_child = (last != near_node) ? near_node : far_node;
 		} else {
-			try_child = (same_node(last, m_top_bvh_nodes[current.parent])) ? near_node : far_node;
+			try_child = (last == &m_top_bvh_nodes[current->parent]) ? near_node : far_node;
 		}
 
 		intersection_test_result = r.intersects_aabb(try_child);
@@ -356,12 +422,12 @@ void Scene::intersect_top(Ray& r) const { //assumes ray intersects
 			last = current;
 			current = try_child;
 		} else { //either move to far or up
-			if (same_node(try_child, near_node)) { // move to far
+			if (try_child == near_node) { // move to far
 				last = near_node;
 			} else { // move up
 				last = current;
-				if (current.parent == -1) return;
-				current = m_top_bvh_nodes[current.parent];
+				if (current->parent == -1) return;
+				current = &m_top_bvh_nodes[current->parent];
 			}
 		}
 	}
@@ -372,59 +438,59 @@ void Scene::intersect_bot(Ray& r, int obj_index) const { //assumes ray intersect
 	//https://www.sci.utah.edu/~wald/Publications/2011/StackFree/sccg2011.pdf
 	const uint model_start = m_model_bvh_starts[obj_index];
 
-	BVHNode last;
-	BVHNode current = m_bvh_nodes[model_start];
-	BVHNode near_node;
-	BVHNode far_node;
+	const BVHNode* last;
+	const BVHNode* current = &m_bvh_nodes[model_start];
+	const BVHNode* near_node;
+	const BVHNode* far_node;
 	//float2 intersection_test_result = r.intersects_aabb(current->bounds);
 	//if (intersection_test_result.x >= intersection_test_result.y || intersection_test_result.x > r.t) return; // now we know that the root is intersected and partly closer than the furthest already hit object
 
 	for (int step = 0; step < 100000; step++) {
-		if (current.count) { // if in leaf
-			for (int i = current.leftFirst; i < current.leftFirst + current.count; i++) {
+		if (current->count) { // if in leaf
+			for (int i = current->leftFirst; i < current->leftFirst + current->count; i++) {
 				const uint prim_start = m_model_primitives_starts[obj_index];
 				uint triangle_index = prim_start + m_indices[prim_start + i];
 				const Triangle& t = m_triangles[triangle_index];
 				intersect_triangle(t, r, triangle_index);
 			}
 			last = current;
-			if (current.parent == -1) return;
-			current = m_bvh_nodes[model_start + current.parent];
+			if (current->parent == -1) return;
+			current = &m_bvh_nodes[model_start + current->parent];
 			continue;
 		}
 
 
-		float dist_left = abs(m_bvh_nodes[model_start + current.leftFirst].minx - r.o.x) +
-			abs(m_bvh_nodes[model_start + current.leftFirst].miny - r.o.y) +
-			abs(m_bvh_nodes[model_start + current.leftFirst].minz - r.o.z);
-		float dist_right = abs(m_bvh_nodes[model_start + current.leftFirst + 1].minx - r.o.x) +
-			abs(m_bvh_nodes[model_start + current.leftFirst + 1].miny - r.o.y) +
-			abs(m_bvh_nodes[model_start + current.leftFirst + 1].minz - r.o.z);
+		float dist_left = abs(m_bvh_nodes[model_start + current->leftFirst].minx - r.o.x) +
+			abs(m_bvh_nodes[model_start + current->leftFirst].miny - r.o.y) +
+			abs(m_bvh_nodes[model_start + current->leftFirst].minz - r.o.z);
+		float dist_right = abs(m_bvh_nodes[model_start + current->leftFirst + 1].minx - r.o.x) +
+			abs(m_bvh_nodes[model_start + current->leftFirst + 1].miny - r.o.y) +
+			abs(m_bvh_nodes[model_start + current->leftFirst + 1].minz - r.o.z);
 		if (dist_left < dist_right) {
-			near_node = m_bvh_nodes[model_start + current.leftFirst];
-			far_node = m_bvh_nodes[model_start + current.leftFirst + 1];
+			near_node = &m_bvh_nodes[model_start + current->leftFirst];
+			far_node = &m_bvh_nodes[model_start + current->leftFirst + 1];
 		}
 		else {
-			near_node = m_bvh_nodes[model_start + current.leftFirst + 1];
-			far_node = m_bvh_nodes[model_start + current.leftFirst];
+			near_node = &m_bvh_nodes[model_start + current->leftFirst + 1];
+			far_node = &m_bvh_nodes[model_start + current->leftFirst];
 		}
 
 
-		if (same_node(last, far_node)) { //just went up
+		if (last == far_node) { //just went up
 			last = current;
-			if (current.parent == -1) return;
-			current = m_bvh_nodes[model_start + current.parent];
+			if (current->parent == -1) return;
+			current = &m_bvh_nodes[model_start + current->parent];
 			continue;
 		}
 
 		// either last node is near or parent
 
-		BVHNode try_child;
-		if (current.parent == -1) {
-			try_child = (!same_node(last, near_node)) ? near_node : far_node;
+		const BVHNode* try_child;
+		if (current->parent == -1) {
+			try_child = (last != near_node) ? near_node : far_node;
 		}
 		else {
-			try_child = (same_node(last, m_bvh_nodes[model_start + current.parent])) ? near_node : far_node;
+			try_child = (last == &m_bvh_nodes[model_start + current->parent]) ? near_node : far_node;
 		}
 
 		float2 intersection_test_result = r.intersects_aabb(try_child);
@@ -433,13 +499,13 @@ void Scene::intersect_bot(Ray& r, int obj_index) const { //assumes ray intersect
 			current = try_child;
 		}
 		else { //either move to far or up
-			if (same_node(try_child, near_node)) { // move to far
+			if (try_child == near_node) { // move to far
 				last = near_node;
 			}
 			else { // move up
 				last = current;
-				if (current.parent == -1) return;
-				current = m_bvh_nodes[model_start + current.parent];
+				if (current->parent == -1) return;
+				current = &m_bvh_nodes[model_start + current->parent];
 			}
 		}
 	}

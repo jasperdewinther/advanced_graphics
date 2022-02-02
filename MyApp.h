@@ -35,6 +35,10 @@ private:
 	int old_width;
 	int old_height;
 
+
+	std::unique_ptr<Kernel> bilateral_filter_kernel = std::make_unique<Kernel>((char*)"bilateral_filter.cl", (char*)"filter");
+	Buffer accumulation_buffer_gpu;
+	Buffer pixel_colors_buffer;
 	float3* accumulation_buffer;
 	float3* pixel_colors;
 	float3* accumulation_buffer_2nd;
@@ -59,6 +63,7 @@ private:
 	int chromatic_aberration = 0;
 	float distance_to_center = 10.f;
 	float3 color_counter = float3(0,0,0);
+	bool use_gpu = false;
 
 	 
 

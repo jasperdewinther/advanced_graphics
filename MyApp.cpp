@@ -53,6 +53,8 @@ void Tmpl8::MyApp::fix_buffers()
 {
 	delete[] accumulation_buffer;
 	accumulation_buffer = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
+	accumulation_buffer_gpu.delete_buffer();
+	accumulation_buffer_gpu = Buffer(sizeof(float3) * virtual_width * virtual_height / 4, Buffer::DEFAULT, accumulation_buffer);
 
 	delete[] accumulation_buffer_2nd;
 	accumulation_buffer_2nd = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
@@ -60,6 +62,8 @@ void Tmpl8::MyApp::fix_buffers()
 
 	delete[] pixel_colors;
 	pixel_colors = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
+	pixel_colors_buffer.delete_buffer();
+	pixel_colors_buffer = Buffer(sizeof(float3) * virtual_width * virtual_height / 4, Buffer::DEFAULT, pixel_colors);
 
 	delete[] temp_image;
 	temp_image = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
@@ -89,7 +93,7 @@ void Tmpl8::MyApp::trace_rays(const float3& camerapos, const float3& cameradir){
 		temp_image[x + virtual_width * y] = float3(0, 0, 0);
 		});
 
-	s.trace_scene(temp_image, virtual_width, virtual_height, camerapos, cameradir, fov, bounces, accumulation_count + 1, nthreads);
+	s.trace_scene(temp_image, virtual_width, virtual_height, camerapos, cameradir, fov, bounces, rand(), nthreads, use_gpu);
 
 	run_multithreaded(nthreads, virtual_width, virtual_height, [this](int x, int y) {
 		accumulation_buffer[x + virtual_width * y] += temp_image[x + virtual_width * y];
@@ -97,8 +101,8 @@ void Tmpl8::MyApp::trace_rays(const float3& camerapos, const float3& cameradir){
 
 }
 
-void Tmpl8::MyApp::apply_post_processing()
-{
+void Tmpl8::MyApp::apply_post_processing(){
+
 	run_multithreaded(nthreads, virtual_width, virtual_height, [this](int x, int y) {
 		float3 old_color = accumulation_buffer[x + virtual_width * y] / (float)accumulation_count;
 		if (old_color.x > 1.f || old_color.y > 1.f || old_color.z > 1.f) old_color = old_color / max(old_color.x, max(old_color.y, old_color.z));
@@ -107,6 +111,22 @@ void Tmpl8::MyApp::apply_post_processing()
 			max(min(0.99f, old_color.y), 0.01f), 
 			max(min(0.99f, old_color.z), 0.01f));
 		});
+	/*uint pixel_count = virtual_width * virtual_height;
+	accumulation_buffer_gpu.CopyToDevice();
+	if (!use_gpu) {
+		s.b_normals_image.CopyToDevice();
+		s.b_hitpos_image.CopyToDevice();
+	}
+	bilateral_filter_kernel->SetArgument(0, &accumulation_buffer_gpu);
+	bilateral_filter_kernel->SetArgument(1, &pixel_colors_buffer);
+	bilateral_filter_kernel->SetArgument(2, &s.b_normals_image);
+	bilateral_filter_kernel->SetArgument(3, &s.b_hitpos_image);
+	bilateral_filter_kernel->SetArgument(4, (int)accumulation_count);
+	bilateral_filter_kernel->SetArgument(5, virtual_width * virtual_height);
+	bilateral_filter_kernel->SetArgument(6, virtual_width);
+	bilateral_filter_kernel->Run(pixel_count + (256 - (pixel_count % 256)), 256);
+	pixel_colors_buffer.CopyFromDevice();*/
+	
 
 	color_counter = float3(0, 0, 0);
 	run_multithreaded(1, virtual_width, virtual_height, [this](int x, int y) {
@@ -172,8 +192,7 @@ void Tmpl8::MyApp::render_pixels() {
 		}
 		});
 }
-void Tmpl8::MyApp::PostDraw()
-{
+void Tmpl8::MyApp::PostDraw(){
 	
 	glfwPollEvents();
 	ImGui_ImplOpenGL3_NewFrame();
@@ -181,6 +200,7 @@ void Tmpl8::MyApp::PostDraw()
 	ImGui::NewFrame();
 	ImGui::Begin("settings");
 	if (ImGui::Checkbox("Multithreading", &multithreading)) nthreads = multithreading ? (int)std::thread::hardware_concurrency() : 1;
+	ImGui::Checkbox("use gpu", &use_gpu);
 	ImGui::Text("number of threads used: %i", nthreads);
 	if (ImGui::SliderInt("bounces", &bounces, 0, 20)) reset_image();
 	if (ImGui::SliderFloat("scene progress", &scene_progress, 0.f, 1.f)) reset_image();
