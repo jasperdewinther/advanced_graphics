@@ -99,7 +99,7 @@ void generate_primary_rays(
 	kernel->SetArgument(14, camerapos.y);
 	kernel->SetArgument(15, camerapos.z);
 	kernel->SetArgument(16, (int)(sizeof(Ray)/sizeof(float)));
-	kernel->SetArgument(17, (int)0);
+	kernel->SetArgument(17, (int)noise);
 	kernel->Run2D(int2(width + (16-(width%16)), height + (16-(height%16))), int2(16,16));
 	
 }

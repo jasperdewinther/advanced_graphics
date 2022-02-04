@@ -52,7 +52,7 @@ private:
 
 	//all imgui settings
 	bool multithreading = true;
-	int bounces = 20;
+	int bounces = 30;
 	float scene_progress = 0.f; //between 0 and 1 where a scene progress of 0 has the same camera position as 1;
 	bool block_progress = true;
 	int fov = 90;
@@ -63,7 +63,7 @@ private:
 	int chromatic_aberration = 0;
 	float distance_to_center = 10.f;
 	float3 color_counter = float3(0,0,0);
-	bool use_gpu = false;
+	bool use_gpu = true;
 
 	 
 

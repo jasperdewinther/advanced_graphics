@@ -81,6 +81,7 @@ void Scene::trace_scene(
 	const uint nthreads,
 	const bool use_gpu
 ) {
+	Timer t_total = Timer();
 	if (rays_buffer.get() == nullptr || rays_buffer.get()->size != sizeof(Ray) * screen_width * screen_height / 4) {
 		init_buffers(screen_width, screen_height);
 		fill_gpu_buffers(screen_width, screen_height);
@@ -88,14 +89,14 @@ void Scene::trace_scene(
 	active_rays = false;
 	ray_count = screen_width * screen_height;
 	std::atomic<int> counter;
-	Timer t = Timer();
+	
 
 
 	if (use_gpu) {
 		generate(screen_width, screen_height, camerapos, camera_direction, fov, rand, true);
 
 		Buffer b_screendata = Buffer(sizeof(float3) * screen_width * screen_height / 4, Buffer::DEFAULT, screendata);
-
+		//Timer t = Timer();
 
 		ray_extend_kernel->SetArgument(1, &b_top_bvh_nodes);
 		ray_extend_kernel->SetArgument(2, &b_top_leaves);
@@ -116,8 +117,12 @@ void Scene::trace_scene(
 		ray_connect_kernel->SetArgument(1, rays_buffer.get());
 		ray_connect_kernel->SetArgument(2, rays2_buffer.get());
 
+		//printf("argument setting took %f seconds\n", t.elapsed());
+		
+
 
 		for (int i = 0; i < bounces; i++) {
+			//t.reset();
 			counter = 0;
 			const uint t_per_w = 256;
 
@@ -144,10 +149,12 @@ void Scene::trace_scene(
 			ray_count = counter;
 			if (ray_count == 0) break;
 			active_rays = active_rays ? false : true;
+			//printf("bounce %i took %f seconds with %i rays left\n", i, t.elapsed(), ray_count);
 		}
-		printf("took %f seconds\n", t.elapsed());
+		
 		b_screendata.CopyFromDevice();
 		b_screendata.delete_buffer();
+		//printf("total time %f\n", t_total.elapsed());
 	} else {
 		generate(screen_width, screen_height, camerapos, camera_direction, fov, rand, true);
 		rays_buffer->CopyFromDevice();
@@ -418,7 +425,7 @@ void Scene::intersect_top(Ray& r) const { //assumes ray intersects
 		}
 
 		intersection_test_result = r.intersects_aabb(try_child);
-		if (intersection_test_result.x < intersection_test_result.y) { // if intersection is found
+		if (intersection_test_result.x < intersection_test_result.y && intersection_test_result.x < r.t) { // if intersection is found
 			last = current;
 			current = try_child;
 		} else { //either move to far or up
@@ -451,6 +458,8 @@ void Scene::intersect_bot(Ray& r, int obj_index) const { //assumes ray intersect
 				const uint prim_start = m_model_primitives_starts[obj_index];
 				uint triangle_index = prim_start + m_indices[prim_start + i];
 				const Triangle& t = m_triangles[triangle_index];
+				float sqrd_dist = r.t * r.t;
+				if (dot(t.p0, t.p0) < sqrd_dist || dot(t.p1, t.p1) < sqrd_dist || dot(t.p2, t.p2) < sqrd_dist)
 				intersect_triangle(t, r, triangle_index);
 			}
 			last = current;
@@ -494,7 +503,7 @@ void Scene::intersect_bot(Ray& r, int obj_index) const { //assumes ray intersect
 		}
 
 		float2 intersection_test_result = r.intersects_aabb(try_child);
-		if (intersection_test_result.x < intersection_test_result.y) { // if intersection is found
+		if (intersection_test_result.x < intersection_test_result.y && intersection_test_result.x < r.t) { // if intersection is found
 			last = current;
 			current = try_child;
 		}

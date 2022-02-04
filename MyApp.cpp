@@ -202,7 +202,7 @@ void Tmpl8::MyApp::PostDraw(){
 	if (ImGui::Checkbox("Multithreading", &multithreading)) nthreads = multithreading ? (int)std::thread::hardware_concurrency() : 1;
 	ImGui::Checkbox("use gpu", &use_gpu);
 	ImGui::Text("number of threads used: %i", nthreads);
-	if (ImGui::SliderInt("bounces", &bounces, 0, 20)) reset_image();
+	if (ImGui::SliderInt("bounces", &bounces, 0, 40)) reset_image();
 	if (ImGui::SliderFloat("scene progress", &scene_progress, 0.f, 1.f)) reset_image();
 	if (ImGui::SliderInt("fov", &fov, 1, 180)) reset_image();
 	if (ImGui::SliderFloat("view height", &view_height, 0.1f, 19.9f)) reset_image();
