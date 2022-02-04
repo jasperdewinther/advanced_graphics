@@ -812,6 +812,7 @@ bool CheckCL( cl_int result, const char* file, int line )
 	if (result == CL_INVALID_BUFFER_SIZE) FatalError( "Error: CL_INVALID_BUFFER_SIZE\n%s, line %i", file, line, "OpenCL error" );
 	if (result == CL_INVALID_MIP_LEVEL) FatalError( "Error: CL_INVALID_MIP_LEVEL\n%s, line %i", file, line, "OpenCL error" );
 	if (result == CL_INVALID_GLOBAL_WORK_SIZE) FatalError( "Error: CL_INVALID_GLOBAL_WORK_SIZE\n%s, line %i", file, line, "OpenCL error" );
+	FatalError("Error: unhandled CL exception\n%s, line %i", file, line, "OpenCL error");
 	return false;
 }
 
@@ -877,7 +878,9 @@ Buffer::Buffer( unsigned int N, unsigned int t, void* ptr )
 	{
 		size = N;
 		textureID = 0; // not representing a texture
-		deviceBuffer = clCreateBuffer( Kernel::GetContext(), rwFlags, size * 4, 0, 0 );
+		int error;
+		deviceBuffer = clCreateBuffer( Kernel::GetContext(), rwFlags, size * 4, 0, &error );
+		CHECKCL( error );
 		hostBuffer = (uint*)ptr;
 	}
 	else
@@ -892,16 +895,21 @@ Buffer::Buffer( unsigned int N, unsigned int t, void* ptr )
 	}
 }
 
+
 // Buffer destructor
 // ----------------------------------------------------------------------------
 Buffer::~Buffer()
 {
-	if (ownData)
+	/*if (ownData)
 	{
 		delete hostBuffer;
 		hostBuffer = 0;
 	}
-	if ((type & (TEXTURE | TARGET)) == 0) clReleaseMemObject( deviceBuffer );
+	if ((type & (TEXTURE | TARGET)) == 0) clReleaseMemObject( deviceBuffer );*/
+}
+
+void Buffer::delete_buffer() {
+	clReleaseMemObject(deviceBuffer);
 }
 
 // CopyToDevice method
@@ -1235,7 +1243,8 @@ void Kernel::Run2D( const int2 count, const int2 lsize, cl_event* eventToWaitFor
 void Kernel::Run( const size_t count, const size_t localSize, cl_event* eventToWaitFor, cl_event* eventToSet )
 {
 	cl_int error;
-	CHECKCL( error = clEnqueueNDRangeKernel( queue, kernel, 1, 0, &count, localSize == 0 ? 0 : &localSize, eventToWaitFor ? 1 : 0, eventToWaitFor, eventToSet ) );
+	error = clEnqueueNDRangeKernel(queue, kernel, 1, 0, &count, localSize == 0 ? 0 : &localSize, eventToWaitFor ? 1 : 0, eventToWaitFor, eventToSet);
+	CHECKCL( error );
 }
 
 // surface implementation

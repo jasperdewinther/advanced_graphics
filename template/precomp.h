@@ -1032,6 +1032,7 @@ public:
 	Buffer() : hostBuffer(0) {}
 	Buffer(unsigned int N, unsigned int t = DEFAULT, void* ptr = 0);
 	~Buffer();
+	void delete_buffer();
 	cl_mem* GetDevicePtr() { return &deviceBuffer; }
 	unsigned int* GetHostPtr() { return hostBuffer; }
 	void CopyToDevice(bool blocking = true);

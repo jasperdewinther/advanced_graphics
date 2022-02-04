@@ -1,7 +1,7 @@
 #include "precomp.h"
 #include "AABB.h"
 
-AABB::AABB():
+AABB::AABB() :
 	minx(0.f),
 	miny(0.f),
 	minz(0.f),
@@ -11,7 +11,7 @@ AABB::AABB():
 {
 }
 
-AABB::AABB(const float3& min, const float3& max):
+AABB::AABB(const float3& min, const float3& max) :
 	minx(min.x),
 	miny(min.y),
 	minz(min.z),
@@ -20,17 +20,17 @@ AABB::AABB(const float3& min, const float3& max):
 	maxz(min.z)
 {}
 
-AABB::AABB(float minx, float miny, float minz, float maxx, float maxy, float maxz):
+AABB::AABB(float minx, float miny, float minz, float maxx, float maxy, float maxz) :
 	minx(minx),
 	miny(miny),
 	minz(minz),
 	maxx(maxx),
-	maxy(maxy), 
+	maxy(maxy),
 	maxz(maxz)
 {
 }
 
 float3 AABB::get_center()
 {
-	return float3(minx+(maxx-minx)/2, miny + (maxy - miny) / 2, minz + (maxz - minz) / 2);
+	return float3(minx + (maxx - minx) / 2, miny + (maxy - miny) / 2, minz + (maxz - minz) / 2);
 }

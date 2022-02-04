@@ -1,9 +1,13 @@
 #pragma once
-#include "Scene.h"
+#include <format>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+
+#include "Scene.h"
 #include "SceneBuilders.h"
+#include "Ray.h"
+#include "Utils.h"
 
 
 
@@ -30,23 +34,25 @@ private:
 	int nthreads = std::thread::hardware_concurrency();
 	int old_width;
 	int old_height;
-	Ray* rays;
+
+
+	std::unique_ptr<Kernel> bilateral_filter_kernel = std::make_unique<Kernel>((char*)"bilateral_filter.cl", (char*)"filter");
+	Buffer accumulation_buffer_gpu;
+	Buffer pixel_colors_buffer;
 	float3* accumulation_buffer;
 	float3* pixel_colors;
+	float3* accumulation_buffer_2nd;
 	float3* temp_image; // used for post processing when a temporary image is required
 	ImGuiContext* ctx;
 	int virtual_width;
 	int virtual_height;
 	uint accumulation_count = 0;
 
-	std::unique_ptr<Kernel> ray_gen_kernel = std::make_unique<Kernel>((char*)"ray_gen.cl", (char*)"ray_gen");
-	std::unique_ptr<Buffer> rays_buffer;
-
-	float time_setup, time_ray_gen, time_trace, post_processing, time_draw; //performance timers
+	float time_trace, post_processing, time_draw; //performance timers
 
 	//all imgui settings
 	bool multithreading = true;
-	int bounces = 10;
+	int bounces = 30;
 	float scene_progress = 0.f; //between 0 and 1 where a scene progress of 0 has the same camera position as 1;
 	bool block_progress = true;
 	int fov = 90;
@@ -56,20 +62,19 @@ private:
 	float vignetting = 0.0;
 	int chromatic_aberration = 0;
 	float distance_to_center = 10.f;
-	bool complexity_view = false;
-	bool rotate_objects = false;
-	float rotation_progress = 0.f;
+	float3 color_counter = float3(0,0,0);
+	bool use_gpu = true;
+
 	 
 
 
 
-	void fix_ray_buffer();
+	void fix_buffers();
 	void set_progression();
-	void trace_rays();
+	void trace_rays(const float3& camerapos, const float3& cameradir);
 	void apply_post_processing();
 	void render_pixels();
 
-	void update_rotations();
 	void reset_image();
 	uint color_to_uint(const float3& color);
 

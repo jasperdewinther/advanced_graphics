@@ -23,6 +23,12 @@
     <CharacterSet>NotSet</CharacterSet>
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <EnableASAN>false</EnableASAN>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <EnableASAN>false</EnableASAN>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -44,6 +50,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <TargetName>$(ProjectName)_debug</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
+    <ClangTidyChecks>bugprone-* , clang-analyzer-* ,  concurrency-* ,  cppcoreguidelines-* , performance-*</ClangTidyChecks>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -127,7 +138,7 @@
   <ItemGroup>
     <ClCompile Include="AABB.cpp" />
     <ClCompile Include="BVH.cpp" />
-    <ClCompile Include="DirectionalLight.cpp" />
+    <ClCompile Include="BVHNode.cpp" />
     <ClCompile Include="lib\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="lib\imgui\backends\imgui_impl_opengl3.cpp" />
     <ClCompile Include="lib\imgui\imgui.cpp" />
@@ -137,15 +148,9 @@
     <ClCompile Include="lib\imgui\imgui_widgets.cpp" />
     <ClCompile Include="Materials.cpp" />
     <ClCompile Include="MyApp.cpp" />
-    <ClCompile Include="Plane.cpp" />
-    <ClCompile Include="PointLight.cpp" />
-    <ClCompile Include="Light.cpp" />
     <ClCompile Include="Ray.cpp" />
-    <ClCompile Include="RayHelper.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneBuilders.cpp" />
-    <ClCompile Include="Sphere.cpp" />
-    <ClCompile Include="SpotLight.cpp" />
     <ClCompile Include="template\template.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precomp.h</PrecompiledHeaderFile>
@@ -158,8 +163,8 @@
   <ItemGroup>
     <ClInclude Include="AABB.h" />
     <ClInclude Include="BVH.h" />
+    <ClInclude Include="BVHNode.h" />
     <ClInclude Include="cl\tools.cl" />
-    <ClInclude Include="DirectionalLight.h" />
     <ClInclude Include="lib\imgui\backends\imgui_impl_glfw.h" />
     <ClInclude Include="lib\imgui\backends\imgui_impl_opengl3.h" />
     <ClInclude Include="lib\imgui\backends\imgui_impl_opengl3_loader.h" />
@@ -170,29 +175,25 @@
     <ClInclude Include="lib\imgui\imstb_textedit.h" />
     <ClInclude Include="lib\imgui\imstb_truetype.h" />
     <ClInclude Include="Materials.h" />
-    <ClInclude Include="PointLight.h" />
     <ClInclude Include="MyApp.h" />
-    <ClInclude Include="Plane.h" />
-    <ClInclude Include="Light.h" />
     <ClInclude Include="Ray.h" />
-    <ClInclude Include="RayHelper.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="SceneBuilders.h" />
-    <ClInclude Include="Sphere.h" />
-    <ClInclude Include="SpotLight.h" />
     <ClInclude Include="template\common.h" />
     <ClInclude Include="template\precomp.h" />
     <ClInclude Include="Triangle.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="bilateral_filter.cl" />
     <None Include="cl\kernels.cl" />
-    <None Include="handle_hits.cl" />
+    <None Include="common.cl" />
+    <None Include="ray_connect.cl" />
     <None Include="ray_gen.cl" />
     <None Include="README.md" />
     <None Include="template\LICENSE" />
-    <None Include="trace_rays.cl" />
-    <None Include="trace_shadows.cl" />
+    <None Include="ray_extend.cl" />
+    <None Include="ray_shade.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

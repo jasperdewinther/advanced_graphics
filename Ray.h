@@ -1,8 +1,8 @@
 #pragma once
 #include <limits>
 #include <vector>
-#include <Utils.h>
-#include "AABB.h"
+#include "BVHNode.h"
+#include "Triangle.h"
 
 
 class Ray
@@ -11,14 +11,16 @@ public:
 	float3 o; //origin
 	float3 d; //direction
 	float3 invDir;
-	float3 hit_normal; //direction when primitive was hit, has to do with rotated objects
 	float t; //distance to closest intersection
-	const void* hitptr; //a pointer to the hit object
-	Primitive p = Primitive::nothing;
-	int complexity = 0;
+	int pixel_id;
+	float3 E;
+	float3 T;
+	uint hitptr; //a pointer to the hit object
 
-	Ray(float3 origin, float3 direction);
-	float2 intersects_aabb(const AABB& box); //returns tnear and tfar
+	Ray();
+	Ray(float3 origin, float3 direction, uint pixel_id, float3 E, float3 T);
+	float2 intersects_aabb(const BVHNode& box); //returns tnear and tfar
+	float2 intersects_aabb(const BVHNode* box);
 };
 
 void generate_primary_rays(
@@ -27,8 +29,6 @@ void generate_primary_rays(
 	float fov, 
 	int width, 
 	int height,
-	Ray* rays, 
-	int nthreads, 
 	Kernel* kernel,
 	Buffer* buffer,
 	int noise); //fov in horizontal degrees
