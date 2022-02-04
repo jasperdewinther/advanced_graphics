@@ -51,6 +51,7 @@ void MyApp::Tick( float deltaTime )
 
 void Tmpl8::MyApp::fix_buffers()
 {
+	printf("setting up pixel buffer for %i pixels\n", virtual_width * virtual_height);
 	delete[] accumulation_buffer;
 	accumulation_buffer = (float3*)malloc(sizeof(float3) * virtual_width * virtual_height);
 	accumulation_buffer_gpu.delete_buffer();

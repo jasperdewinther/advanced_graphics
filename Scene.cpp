@@ -425,7 +425,7 @@ void Scene::intersect_top(Ray& r) const { //assumes ray intersects
 		}
 
 		intersection_test_result = r.intersects_aabb(try_child);
-		if (intersection_test_result.x < intersection_test_result.y && intersection_test_result.x < r.t) { // if intersection is found
+		if (intersection_test_result.x < intersection_test_result.y/* && intersection_test_result.x < r.t*/) { // if intersection is found
 			last = current;
 			current = try_child;
 		} else { //either move to far or up
@@ -459,7 +459,7 @@ void Scene::intersect_bot(Ray& r, int obj_index) const { //assumes ray intersect
 				uint triangle_index = prim_start + m_indices[prim_start + i];
 				const Triangle& t = m_triangles[triangle_index];
 				float sqrd_dist = r.t * r.t;
-				if (dot(t.p0, t.p0) < sqrd_dist || dot(t.p1, t.p1) < sqrd_dist || dot(t.p2, t.p2) < sqrd_dist)
+				/*if (dot(t.p0, t.p0) < sqrd_dist || dot(t.p1, t.p1) < sqrd_dist || dot(t.p2, t.p2) < sqrd_dist)*/
 				intersect_triangle(t, r, triangle_index);
 			}
 			last = current;
@@ -503,7 +503,7 @@ void Scene::intersect_bot(Ray& r, int obj_index) const { //assumes ray intersect
 		}
 
 		float2 intersection_test_result = r.intersects_aabb(try_child);
-		if (intersection_test_result.x < intersection_test_result.y && intersection_test_result.x < r.t) { // if intersection is found
+		if (intersection_test_result.x < intersection_test_result.y /* && intersection_test_result.x < r.t*/) { // if intersection is found
 			last = current;
 			current = try_child;
 		}
