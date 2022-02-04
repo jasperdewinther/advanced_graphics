@@ -1,7 +1,8 @@
-This template is intended for students of the Advanced Graphics course of Utrecht University.
+Implemented a path tracer for the course advanced graphics. Below are some of the rendered images:
 
-**Please refer to "_ getting started.pdf" for instructions.**
 
-Code is fully public domain. Use as you please.
 
-Contact me at bikker.j@gmail.com .
+
+
+
+Original template is from: https://github.com/jbikker/advgrtmpl8
