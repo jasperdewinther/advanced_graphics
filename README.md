@@ -1,4 +1,4 @@
-Implemented a path tracer for the course advanced graphics at Utrecht University. Below are some of the rendered images:
+Implemented a wavefront path tracer for the course advanced graphics at Utrecht University. Below are some of the rendered images:
 
 
 ![alt text](renders/high_def_models.png?raw=true)
