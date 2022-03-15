@@ -65,14 +65,14 @@ void intersect_bot(__global struct Ray *r, int obj_index,
   __global struct BVHNode *near_node;
   __global struct BVHNode *far_node;
 
-  for (int step = 0; step < 10000000; step++) {
+  for (int step = 0; step < 1000; step++) {
     if (current->count) { // if in leaf
       for (int i = current->leftFirst; i < current->leftFirst + current->count;
            i++) {
         uint prim_start = m_model_primitives_starts[obj_index];
         uint triangle_index = prim_start + m_indices[prim_start + i];
         struct Triangle t = m_triangles[triangle_index];
-        float sqrd_dist = r->t * r->t;
+        //float sqrd_dist = r->t * r->t;
         /*if (dot(t.p0, t.p0) < sqrd_dist || dot(t.p1, t.p1) < sqrd_dist ||
             dot(t.p2, t.p2) < sqrd_dist)*/ // dont check triangle if its further
                                          // than already hit
@@ -157,12 +157,12 @@ extend(__global struct Ray *ray_data, __global struct BVHNode *m_top_bvh_nodes,
   __global struct BVHNode *near_node;
   __global struct BVHNode *far_node;
   float2 intersection_test_result = intersects_aabb_glob(current, r);
-  if (intersection_test_result.x >= intersection_test_result.y ||
-      intersection_test_result.x > r->t)
+  if (intersection_test_result.x >= intersection_test_result.y/* ||
+      intersection_test_result.x > r->t*/)
     return; // now we know that the root is intersected and partly closer than
             // the furthest already hit object
 
-  for (int step = 0; step < 100000; step++) {
+  for (int step = 0; step < 1000; step++) {
     if (current->count) { // if in leaf
       for (int i = current->leftFirst; i < current->leftFirst + current->count;
            i++) {
