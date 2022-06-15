@@ -96,7 +96,7 @@ void Scene::trace_scene(
 		generate(screen_width, screen_height, camerapos, camera_direction, fov, rand, true);
 
 		Buffer b_screendata = Buffer(sizeof(float3) * screen_width * screen_height / 4, Buffer::DEFAULT, screendata);
-		//Timer t = Timer();
+		Timer t = Timer();
 
 		ray_extend_kernel->SetArgument(1, &b_top_bvh_nodes);
 		ray_extend_kernel->SetArgument(2, &b_top_leaves);
@@ -122,7 +122,7 @@ void Scene::trace_scene(
 
 
 		for (int i = 0; i < bounces; i++) {
-			//t.reset();
+			t.reset();
 			counter = 0;
 			const uint t_per_w = 256;
 
@@ -147,9 +147,9 @@ void Scene::trace_scene(
 			ray_connect_kernel->Run(ray_count + (t_per_w - (ray_count % t_per_w)), t_per_w);
 
 			ray_count = counter;
+			printf("bounce %i took %f seconds with %i rays left\n", i, t.elapsed(), ray_count);
 			if (ray_count == 0) break;
 			active_rays = active_rays ? false : true;
-			//printf("bounce %i took %f seconds with %i rays left\n", i, t.elapsed(), ray_count);
 		}
 		
 		b_screendata.CopyFromDevice();
