@@ -28,7 +28,7 @@ void intersect_triangle(struct Triangle *tri, __global struct Ray *ray,
   }
 }
 
-float2 intersects_aabb_glob(__global struct BVHNode *box,
+float2 intersects_aabb_glob(__constant struct BVHNode *box,
                             __global struct Ray *r) {
   // https://gist.github.com/DomNomNom/46bb1ce47f68d255fd5d
   float tMinx = (box->minx - r->o.x) * r->invDir.x;
@@ -49,47 +49,51 @@ float2 intersects_aabb_glob(__global struct BVHNode *box,
   return nearfar;
 }
 
-__kernel void
-extend(__global struct Ray *ray_data, __global struct BVHNode *m_top_bvh_nodes,
-       __global struct TopBVHNode *m_top_leaves, __global uint *m_top_indices,
-       __global struct BVHNode *m_bvh_nodes,
-       __global uint *m_model_primitives_starts,
-       __global uint *m_model_bvh_starts, __global struct Triangle *m_triangles,
-       __global uint *m_indices, int max_i) {
+__kernel void extend(__global struct Ray *ray_data,
+                     __constant struct BVHNode *m_top_bvh_nodes,
+                     __constant struct TopBVHNode *m_top_leaves,
+                     __constant uint *m_top_indices,
+                     __constant struct BVHNode *m_bvh_nodes,
+                     __constant uint *m_model_primitives_starts,
+                     __constant uint *m_model_bvh_starts,
+                     __constant struct Triangle *m_triangles,
+                     __constant uint *m_indices, __constant int *max_i) {
 
   uint i = get_global_id(0);
-  if (i > max_i)
+  if (i > max_i[0])
     return;
   __global struct Ray *r = &ray_data[i];
+  if (r->T.x < epsilon && r->T.y < epsilon && r->T.z < epsilon)
+    return;
 
   // https://www.sci.utah.edu/~wald/Publications/2011/StackFree/sccg2011.pdf
-  __global struct BVHNode *last;
-  __global struct BVHNode *current = &m_top_bvh_nodes[0];
-  __global struct BVHNode *near_node;
-  __global struct BVHNode *far_node;
+  __constant struct BVHNode *last;
+  __constant struct BVHNode *current = &m_top_bvh_nodes[0];
+  __constant struct BVHNode *near_node;
+  __constant struct BVHNode *far_node;
   float2 intersection_test_result = intersects_aabb_glob(current, r);
   if (intersection_test_result.x >= intersection_test_result.y/* ||
       intersection_test_result.x > r->t*/)
     return; // now we know that the root is intersected and partly closer than
             // the furthest already hit object
 
-  for (int step = 0; step < 1000; step++) {
+  for (int step = 0; step < 10000; step++) {
     if (current->count) { // if in leaf
       for (int i = current->leftFirst; i < current->leftFirst + current->count;
            i++) {
-        __global struct TopBVHNode *node = &m_top_leaves[m_top_indices[i]];
+        __constant struct TopBVHNode *node = &m_top_leaves[m_top_indices[i]];
         r->o -= node->pos;
 
         uint bobj_index = node->obj;
         uint bmodel_start = m_model_bvh_starts[bobj_index];
 
-        __global struct BVHNode *blast;
-        __global struct BVHNode *bcurrent = &m_bvh_nodes[bmodel_start];
-        __global struct BVHNode *bnear_node;
-        __global struct BVHNode *bfar_node;
+        __constant struct BVHNode *blast;
+        __constant struct BVHNode *bcurrent = &m_bvh_nodes[bmodel_start];
+        __constant struct BVHNode *bnear_node;
+        __constant struct BVHNode *bfar_node;
 
         bool kill = false;
-        for (int bstep = 0; bstep < 1000; bstep++) {
+        for (int bstep = 0; bstep < 10000; bstep++) {
           if (kill == true)
             break;
           if (bcurrent->count) { // if in leaf
@@ -143,7 +147,7 @@ extend(__global struct Ray *ray_data, __global struct BVHNode *m_top_bvh_nodes,
 
           // either last node is near or parent
 
-          __global struct BVHNode *btry_child;
+          __constant struct BVHNode *btry_child;
           if (bcurrent->parent == -1) {
             btry_child = (blast != bnear_node) ? bnear_node : bfar_node;
           } else {
@@ -204,7 +208,7 @@ extend(__global struct Ray *ray_data, __global struct BVHNode *m_top_bvh_nodes,
 
     // either last node is near or parent
 
-    __global struct BVHNode *try_child;
+    __constant struct BVHNode *try_child;
     if (current->parent == -1) {
       try_child = (last != near_node) ? near_node : far_node;
     } else {

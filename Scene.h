@@ -28,8 +28,7 @@ public:
 	std::unique_ptr<float3[]> hitpos_image;
 	Buffer b_normals_image;
 	Buffer b_hitpos_image;
-	std::unique_ptr<Buffer> rays_buffer;
-	std::unique_ptr<Buffer> rays2_buffer;
+	Buffer rays_buffer;
 	std::unique_ptr<Kernel> ray_gen_kernel = std::make_unique<Kernel>((char*)"ray_gen.cl", (char*)"ray_gen");
 	std::unique_ptr<Kernel> ray_extend_kernel = std::make_unique<Kernel>((char*)"ray_extend.cl", (char*)"extend");
 	std::unique_ptr<Kernel> ray_shade_kernel = std::make_unique<Kernel>((char*)"ray_shade.cl", (char*)"shade");

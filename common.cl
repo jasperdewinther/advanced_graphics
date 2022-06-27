@@ -74,10 +74,10 @@ struct Ray {
   float4 o; // origin
   float4 d; // direction
   float4 invDir;
-  float t; // distance to closest intersection
-  int pixel_id;
   float4 E;
   float4 T;
+  float t; // distance to closest intersection
+  int pixel_id;
   uint hitptr; // a pointer to the hit object
 };
 

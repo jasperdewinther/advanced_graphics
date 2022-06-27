@@ -82,7 +82,7 @@ void Scene::trace_scene(
 	const bool use_gpu
 ) {
 	Timer t_total = Timer();
-	if (rays_buffer.get() == nullptr || rays_buffer.get()->size != sizeof(Ray) * screen_width * screen_height / 4) {
+	if (rays_buffer.size != sizeof(Ray) * screen_width * screen_height / 4) {
 		init_buffers(screen_width, screen_height);
 		fill_gpu_buffers(screen_width, screen_height);
 	}
@@ -98,6 +98,10 @@ void Scene::trace_scene(
 		Buffer b_screendata = Buffer(sizeof(float3) * screen_width * screen_height / 4, Buffer::DEFAULT, screendata);
 		//Timer t = Timer();
 
+		m_rays_count[0] = ray_count;
+		b_rays_count.CopyToDevice();
+
+		ray_extend_kernel->SetArgument(0, &rays_buffer);
 		ray_extend_kernel->SetArgument(1, &b_top_bvh_nodes);
 		ray_extend_kernel->SetArgument(2, &b_top_leaves);
 		ray_extend_kernel->SetArgument(3, &b_top_indices);
@@ -106,16 +110,19 @@ void Scene::trace_scene(
 		ray_extend_kernel->SetArgument(6, &b_model_bvh_starts);
 		ray_extend_kernel->SetArgument(7, &b_triangles);
 		ray_extend_kernel->SetArgument(8, &b_indices);
+		ray_extend_kernel->SetArgument(9, &b_rays_count);
 
 
-		ray_shade_kernel->SetArgument(0, &b_rays_count);
-		ray_shade_kernel->SetArgument(1, rays_buffer.get());
-		ray_shade_kernel->SetArgument(2, rays2_buffer.get());
-		ray_shade_kernel->SetArgument(3, &b_triangles);
+		ray_shade_kernel->SetArgument(0, &rays_buffer);
+		ray_shade_kernel->SetArgument(1, &b_rays_count);
+		ray_shade_kernel->SetArgument(2, &b_triangles);
+		ray_shade_kernel->SetArgument(3, rand);
 
 		ray_connect_kernel->SetArgument(0, &b_screendata);
-		ray_connect_kernel->SetArgument(1, rays_buffer.get());
-		ray_connect_kernel->SetArgument(2, rays2_buffer.get());
+		ray_connect_kernel->SetArgument(1, &rays_buffer);
+		ray_connect_kernel->SetArgument(2, &b_rays_count);
+
+
 
 		//printf("argument setting took %f seconds\n", t.elapsed());
 		
@@ -124,31 +131,17 @@ void Scene::trace_scene(
 		for (int i = 0; i < bounces; i++) {
 			//t.reset();
 			counter = 0;
-			const uint t_per_w = 256;
+			const uint t_per_w = 128;
 
 			//extend
-			ray_extend_kernel->SetArgument(0, active_rays ? rays2_buffer.get() : rays_buffer.get());
-			ray_extend_kernel->SetArgument(9, ray_count - 1);
 			ray_extend_kernel->Run(ray_count + (t_per_w - (ray_count % t_per_w)), t_per_w);
 
 			//shade
-			m_rays_count[0] = 0;
-			b_rays_count.CopyToDevice();
-			ray_shade_kernel->SetArgument(4, (int)active_rays);
-			ray_shade_kernel->SetArgument(5, rand);
-			ray_shade_kernel->SetArgument(6, ray_count - 1);
 			ray_shade_kernel->Run(ray_count + (t_per_w - (ray_count % t_per_w)), t_per_w);
-			b_rays_count.CopyFromDevice();
-			counter = m_rays_count[0];
 
 			//connect
-			ray_connect_kernel->SetArgument(3, (int)active_rays);
-			ray_connect_kernel->SetArgument(4, ray_count - 1);
 			ray_connect_kernel->Run(ray_count + (t_per_w - (ray_count % t_per_w)), t_per_w);
 
-			ray_count = counter;
-			if (ray_count == 0) break;
-			active_rays = active_rays ? false : true;
 			//printf("bounce %i took %f seconds with %i rays left\n", i, t.elapsed(), ray_count);
 		}
 		
@@ -157,7 +150,7 @@ void Scene::trace_scene(
 		//printf("total time %f\n", t_total.elapsed());
 	} else {
 		generate(screen_width, screen_height, camerapos, camera_direction, fov, rand, true);
-		rays_buffer->CopyFromDevice();
+		rays_buffer.CopyFromDevice();
 		for (int i = 0; i < bounces; i++) {
 			counter = 0;
 			run_multithreaded(nthreads, ray_count, 1, [this, &counter, &screendata, &rand, screen_width, &screen_height, &camerapos](int x, int y) {
@@ -218,10 +211,8 @@ void Scene::init_buffers(uint width, uint height){
 	b_normals_image = Buffer(sizeof(float3) * width * height/4, Buffer::DEFAULT, normals_image.get());
 	b_hitpos_image = Buffer(sizeof(float3) * width * height/4, Buffer::DEFAULT, hitpos_image.get());
 
-	if (rays_buffer.get() != nullptr) rays_buffer->delete_buffer();
-	if (rays2_buffer.get() != nullptr) rays2_buffer->delete_buffer();
-	rays_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays.get());
-	rays2_buffer = std::make_unique<Buffer>(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays2.get());
+	rays_buffer.delete_buffer();
+	rays_buffer = Buffer(sizeof(Ray) * width * height / 4, Buffer::DEFAULT, rays.get());
 	active_rays = false;
 
 
@@ -279,7 +270,7 @@ void Scene::generate(
 	const int rand,
 	const bool primary
 ) {
-	generate_primary_rays(camerapos, camera_direction, fov, screen_width, screen_height, ray_gen_kernel.get(), rays_buffer.get(), rand);
+	generate_primary_rays(camerapos, camera_direction, fov, screen_width, screen_height, ray_gen_kernel.get(), &rays_buffer, rand);
 }
 void Scene::extend(uint i) {
 	Ray& r = active_rays ? rays2[i] : rays[i];

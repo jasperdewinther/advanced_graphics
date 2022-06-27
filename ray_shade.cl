@@ -91,28 +91,31 @@ struct Ray build_ray(float3 ray_pos, float3 ray_dir, uint pixel_id, float4 E,
   return r;
 }
 
-__kernel void shade(__global uint *new_ray_index, __global struct Ray *rays,
-                    __global struct Ray *rays2,
-                    __global struct Triangle *m_triangles, int active_rays,
-                    int rand, int max_i) {
+__kernel void shade(__global struct Ray *rays, __constant uint *max_i,
+                    __constant struct Triangle *m_triangles, int rand) {
 
   uint i = get_global_id(0);
-  struct Ray r = active_rays ? rays2[i] : rays[i];
-  if (i > max_i)
+  struct Ray r = rays[i];
+  if (r.T.x < epsilon && r.T.y < epsilon && r.T.z < epsilon)
+    return;
+  if (i > max_i[0])
     return;
 
-  if (r.hitptr == 4294967295)
+  if (r.hitptr == 4294967295) {
+    float4 empty_t = {0.0, 0.0, 0.0, 0.0};
+    r.T = empty_t;
     return; // if default value
+  }
 
   struct MaterialData material = materials[m_triangles[r.hitptr].m];
   float4 albedo = material.color;
   if (material.isLight) {
     r.E = r.T * albedo;
-    if (active_rays)
-      rays2[i] = r;
-    else
-      rays[i] = r;
-    return;
+    float4 empty_t = {0.0, 0.0, 0.0, 0.0};
+    r.T = empty_t;
+    rays[i] = r;
+
+    return; // kill ray
   };
   float4 N = m_triangles[r.hitptr].normal;
   float4 I = r.o + r.d * r.t;
@@ -129,10 +132,7 @@ __kernel void shade(__global uint *new_ray_index, __global struct Ray *rays,
       struct Ray new_r =
           build_ray(result.ray_pos, result.ray_dir, r.pixel_id, r.E,
                     r.T * albedo); // todo check E and T calculations
-      if (active_rays)
-        rays[atomic_add(new_ray_index, 1)] = new_r;
-      else
-        rays2[atomic_add(new_ray_index, 1)] = new_r;
+      rays[i] = new_r;
       return;
     } else {
       if (leaving) {
@@ -144,19 +144,12 @@ __kernel void shade(__global uint *new_ray_index, __global struct Ray *rays,
         struct Ray new_r = build_ray(result.ray_pos, result.ray_dir, r.pixel_id,
                                      r.E, r.T * color);
 
-        if (active_rays)
-          rays[atomic_add(new_ray_index, 1)] = new_r;
-        else
-          rays2[atomic_add(new_ray_index, 1)] = new_r;
-
+        rays[i] = new_r;
         return;
       }
       struct Ray new_r =
           build_ray(result.ray_pos, result.ray_dir, r.pixel_id, r.E, r.T);
-      if (active_rays)
-        rays[atomic_add(new_ray_index, 1)] = new_r;
-      else
-        rays2[atomic_add(new_ray_index, 1)] = new_r;
+      rays[i] = new_r;
 
       return;
     }
@@ -167,10 +160,7 @@ __kernel void shade(__global uint *new_ray_index, __global struct Ray *rays,
         build_ray(I.xyz + specular_dir * epsilon, specular_dir, r.pixel_id, r.E,
                   r.T * albedo); // todo check E and T calculations
 
-    if (active_rays)
-      rays[atomic_add(new_ray_index, 1)] = new_r;
-    else
-      rays2[atomic_add(new_ray_index, 1)] = new_r;
+    rays[i] = new_r;
     return;
   } else {
     float3 R = CosineWeightedDiffuseReflection(N.xyz, &rand_state);
@@ -179,10 +169,7 @@ __kernel void shade(__global uint *new_ray_index, __global struct Ray *rays,
     struct Ray new_r = build_ray(
         I.xyz + R * epsilon, R, r.pixel_id, r.E,
         BRDF * (r.T * dot(N.xyz, R) / PDF)); // todo check E and T calculations
-    if (active_rays)
-      rays[atomic_add(new_ray_index, 1)] = new_r;
-    else
-      rays2[atomic_add(new_ray_index, 1)] = new_r;
+    rays[i] = new_r;
     return;
   }
 }
