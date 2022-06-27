@@ -107,7 +107,8 @@ __kernel void shade(__global struct Ray *rays, __constant uint *max_i,
     return; // if default value
   }
 
-  struct MaterialData material = materials[m_triangles[r.hitptr].m];
+  struct MaterialData material =
+      materials[(uint)m_triangles[r.hitptr].normal.w];
   float4 albedo = material.color;
   if (material.isLight) {
     r.E = r.T * albedo;

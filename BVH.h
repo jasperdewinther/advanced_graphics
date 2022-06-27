@@ -26,6 +26,7 @@ public:
 	uint primitive_count;
 	
 
+	std::unique_ptr<BVHNodeCompressed[]> get_compressed() const;
 	BVH() = default;
 	BVH(std::vector<T> prims, bool use_SAH);
 private:
@@ -33,6 +34,9 @@ private:
 	void set_centers(uint N);
 	int count_depth(BVHNode* node) const;
 	int count_nodes(BVHNode* node) const;
+	int max_parent(BVHNode* node) const;
+	int max_leftFirst(BVHNode* node) const;
+	int max_count(BVHNode* node) const;
 	void subdivide(BVHNode* parent, std::atomic<uint>& poolPtr, uint indices_start, bool use_SAH);
 	int partition(const BVHNode& bb, uint start, uint count, bool use_SAH);
 	int partition_shuffle(int axis, float pos, uint start, uint count);

@@ -131,7 +131,7 @@ void Scene::trace_scene(
 		for (int i = 0; i < bounces; i++) {
 			//t.reset();
 			counter = 0;
-			const uint t_per_w = 128;
+			const uint t_per_w = 256;
 
 			//extend
 			ray_extend_kernel->Run(ray_count + (t_per_w - (ray_count % t_per_w)), t_per_w);
@@ -148,7 +148,7 @@ void Scene::trace_scene(
 		b_screendata.CopyFromDevice();
 		b_screendata.delete_buffer();
 		//printf("total time %f\n", t_total.elapsed());
-	} else {
+	}/* else {
 		generate(screen_width, screen_height, camerapos, camera_direction, fov, rand, true);
 		rays_buffer.CopyFromDevice();
 		for (int i = 0; i < bounces; i++) {
@@ -163,7 +163,7 @@ void Scene::trace_scene(
 			active_rays = active_rays ? false : true;
 		}
 		
-	}
+	}*/
 }
 
 void Scene::fill_gpu_buffers(uint screen_width, uint screen_height) {
@@ -177,13 +177,13 @@ void Scene::fill_gpu_buffers(uint screen_width, uint screen_height) {
 	b_indices.delete_buffer();
 	b_rays_count.delete_buffer();
 
-	b_top_bvh_nodes = Buffer(sizeof(BVHNode) * m_top_bvh_nodes.size() / 4, Buffer::DEFAULT, m_top_bvh_nodes.data());
+	b_top_bvh_nodes = Buffer(sizeof(BVHNodeCompressed) * m_top_bvh_nodes.size() / 4, Buffer::DEFAULT, m_top_bvh_nodes.data());
 	b_top_leaves = Buffer(sizeof(TopBVHNodeScene) * m_top_leaves.size() / 4, Buffer::DEFAULT, m_top_leaves.data());
 	b_top_indices = Buffer(sizeof(uint) * m_top_indices.size() / 4, Buffer::DEFAULT, m_top_indices.data());
-	b_bvh_nodes = Buffer(sizeof(BVHNode) * m_bvh_nodes.size() / 4, Buffer::DEFAULT, m_bvh_nodes.data());
+	b_bvh_nodes = Buffer(sizeof(BVHNodeCompressed) * m_bvh_nodes.size() / 4, Buffer::DEFAULT, m_bvh_nodes.data());
 	b_model_primitives_starts = Buffer(sizeof(uint) * m_model_primitives_starts.size() / 4, Buffer::DEFAULT, m_model_primitives_starts.data());
 	b_model_bvh_starts = Buffer(sizeof(uint) * m_model_bvh_starts.size() / 4, Buffer::DEFAULT, m_model_bvh_starts.data());
-	b_triangles = Buffer(sizeof(Triangle) * m_triangles.size() / 4, Buffer::DEFAULT, m_triangles.data());
+	b_triangles = Buffer(sizeof(TriangleCompressed) * m_triangles.size() / 4, Buffer::DEFAULT, m_triangles.data());
 	b_indices = Buffer(sizeof(uint) * m_indices.size() / 4, Buffer::DEFAULT, m_indices.data());
 	b_rays_count = Buffer(sizeof(uint) / 4, Buffer::DEFAULT, m_rays_count.get());
 	
@@ -216,12 +216,12 @@ void Scene::init_buffers(uint width, uint height){
 	active_rays = false;
 
 
-	m_top_bvh_nodes = std::vector<BVHNode>();
+	m_top_bvh_nodes = std::vector<BVHNodeCompressed>();
 	m_top_leaves = std::vector<TopBVHNodeScene>();
-	m_bvh_nodes = std::vector<BVHNode>();
+	m_bvh_nodes = std::vector<BVHNodeCompressed>();
 	m_model_primitives_starts = std::vector<uint>();
 	m_model_bvh_starts = std::vector<uint>();
-	m_triangles = std::vector<Triangle>();
+	m_triangles = std::vector<TriangleCompressed>();
 	m_indices = std::vector<uint>();
 
 	
@@ -229,11 +229,13 @@ void Scene::init_buffers(uint width, uint height){
 	uint model_start_index = 0;
 	uint model_bvh_index = 0;
 	for (int i = 0; i < triangles.size(); i++) {
-		m_triangles.insert(m_triangles.end(), triangles[i].begin(), triangles[i].end()); // contains all triangles
+		for (auto& triangle : triangles[i]) m_triangles.push_back(triangle.compress());
+		//m_triangles.insert(m_triangles.end(), triangles[i].begin(), triangles[i].end()); // contains all triangles
 		m_model_primitives_starts.push_back(model_start_index); // contains the start index in the primitive buffer for every model 
 		m_model_bvh_starts.push_back(model_bvh_index); // contains the start index in the bvh buffer for every model
 		m_indices.insert(m_indices.end(), bvhs[i].indices.get(), bvhs[i].indices.get() + triangles[i].size()); // contains all indices
-		m_bvh_nodes.insert(m_bvh_nodes.end(), bvhs[i].pool.get(), bvhs[i].pool.get() + bvhs[i].elements_of_pool_used); // contains all bvh pools
+		auto compressed_pool = bvhs[i].get_compressed();
+		m_bvh_nodes.insert(m_bvh_nodes.end(), compressed_pool.get(), compressed_pool.get() + bvhs[i].elements_of_pool_used); // contains all bvh pools
 
 		model_bvh_index += bvhs[i].elements_of_pool_used;
 		model_start_index += triangles[i].size();
@@ -253,8 +255,9 @@ void Scene::init_buffers(uint width, uint height){
 		};
 		m_top_leaves.push_back(node); // contains all top level bvh leaves, which point to bvh's
 	}
+	auto compressed_pool = bvh.get_compressed();
 	m_top_indices.insert(m_top_indices.begin(), bvh.indices.get(), bvh.indices.get() + bvh.primitive_count);
-	m_top_bvh_nodes.insert(m_top_bvh_nodes.end(), bvh.pool.get(), bvh.pool.get() + bvh.elements_of_pool_used); // contains entire top level bvh pool
+	m_top_bvh_nodes.insert(m_top_bvh_nodes.end(), compressed_pool.get(), compressed_pool.get() + bvh.elements_of_pool_used); // contains entire top level bvh pool
 }
 
 bool same_node(const BVHNode& n1, const BVHNode& n2) {
@@ -272,6 +275,7 @@ void Scene::generate(
 ) {
 	generate_primary_rays(camerapos, camera_direction, fov, screen_width, screen_height, ray_gen_kernel.get(), &rays_buffer, rand);
 }
+/*
 void Scene::extend(uint i) {
 	Ray& r = active_rays ? rays2[i] : rays[i];
 	intersect_top(r);
@@ -416,7 +420,7 @@ void Scene::intersect_top(Ray& r) const { //assumes ray intersects
 		}
 
 		intersection_test_result = r.intersects_aabb(try_child);
-		if (intersection_test_result.x < intersection_test_result.y/* && intersection_test_result.x < r.t*/) { // if intersection is found
+		if (intersection_test_result.x < intersection_test_result.y/* && intersection_test_result.x < r.t) { // if intersection is found
 			last = current;
 			current = try_child;
 		} else { //either move to far or up
@@ -450,7 +454,7 @@ void Scene::intersect_bot(Ray& r, int obj_index) const { //assumes ray intersect
 				uint triangle_index = prim_start + m_indices[prim_start + i];
 				const Triangle& t = m_triangles[triangle_index];
 				float sqrd_dist = r.t * r.t;
-				/*if (dot(t.p0, t.p0) < sqrd_dist || dot(t.p1, t.p1) < sqrd_dist || dot(t.p2, t.p2) < sqrd_dist)*/
+				/*if (dot(t.p0, t.p0) < sqrd_dist || dot(t.p1, t.p1) < sqrd_dist || dot(t.p2, t.p2) < sqrd_dist)
 				intersect_triangle(t, r, triangle_index);
 			}
 			last = current;
@@ -494,7 +498,7 @@ void Scene::intersect_bot(Ray& r, int obj_index) const { //assumes ray intersect
 		}
 
 		float2 intersection_test_result = r.intersects_aabb(try_child);
-		if (intersection_test_result.x < intersection_test_result.y /* && intersection_test_result.x < r.t*/) { // if intersection is found
+		if (intersection_test_result.x < intersection_test_result.y /* && intersection_test_result.x < r.t) { // if intersection is found
 			last = current;
 			current = try_child;
 		}
@@ -533,4 +537,4 @@ void Scene::intersect_triangle(const Triangle& tri, Ray& ray, uint triangle_inde
 		ray.t = t;
 		ray.hitptr = triangle_index;
 	}
-}
+}*/

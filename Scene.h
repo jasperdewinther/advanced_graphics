@@ -49,16 +49,16 @@ public:
 		const uint nthreads,
 		const bool use_gpu
 	);
-	Buffer* normals_buffer();
-	Buffer* hitpos_buffer();
+	//Buffer* normals_buffer();
+	//Buffer* hitpos_buffer();
 private:
-	std::vector<BVHNode> m_top_bvh_nodes;
+	std::vector<BVHNodeCompressed> m_top_bvh_nodes;
 	std::vector<TopBVHNodeScene> m_top_leaves;
 	std::vector<uint> m_top_indices;
-	std::vector<BVHNode> m_bvh_nodes;
+	std::vector<BVHNodeCompressed> m_bvh_nodes;
 	std::vector<uint> m_model_primitives_starts;
 	std::vector<uint> m_model_bvh_starts;
-	std::vector<Triangle> m_triangles;
+	std::vector<TriangleCompressed> m_triangles;
 	std::vector<uint> m_indices;
 	std::unique_ptr<uint[]> m_rays_count;
 
@@ -83,11 +83,11 @@ private:
 		const bool primary
 		);
 	void fill_gpu_buffers(uint screen_width, uint screen_height);
-	void extend(uint i);
-	void shade(uint i, const int rand, std::atomic<int>& new_ray_index);
-	void connect(float3* screendata, uint i, float3 camerapos);
-	void intersect_top(Ray& r) const;
-	void intersect_bot(Ray& r, int obj_index) const;
-	void intersect_triangle(const Triangle& tri, Ray& ray, uint triangle_index) const;
+	//void extend(uint i);
+	//void shade(uint i, const int rand, std::atomic<int>& new_ray_index);
+	//void connect(float3* screendata, uint i, float3 camerapos);
+	//void intersect_top(Ray& r) const;
+	//void intersect_bot(Ray& r, int obj_index) const;
+	//void intersect_triangle(const Triangle& tri, Ray& ray, uint triangle_index) const;
 };
 

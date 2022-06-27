@@ -44,8 +44,8 @@ struct Triangle {
   float4 p0;
   float4 p1;
   float4 p2;
-  float4 normal;
-  enum Material m;
+  float4 normal; // last element contains material id
+  // enum Material m;
 };
 
 struct BVHNode {
@@ -56,13 +56,12 @@ struct BVHNode {
   float maxy;
   float maxz;
   int leftFirst;
-  int count;
-  int parent;
+  int count; // first 8 bits are for count, the other 24 are for parent (max
+             // 16777216)
 };
 
 bool same_node(struct BVHNode n1, struct BVHNode n2) {
-  return n1.parent == n2.parent && n1.leftFirst == n2.leftFirst &&
-         n1.count == n2.count;
+  return n1.leftFirst == n2.leftFirst && n1.count == n2.count;
 }
 
 struct TopBVHNode {

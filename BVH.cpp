@@ -48,9 +48,14 @@ void BVH<T>::BVH_construct(bool use_SAH)
 	printf("%i primitives\n", primitives.size());
 	printf("max depth: %i\n", count_depth(&pool[0]));
 	printf("node count: %i\n", count_nodes(&pool[0]));
+	printf("highest parent: %i\n", max_parent(&pool[0]));
+	printf("highest leftFirst: %i\n", max_leftFirst(&pool[0]));
+	printf("highest count: %i\n", max_count(&pool[0]));
 	elements_of_pool_used = count_nodes(root);
 	primitive_count = N;
 }
+
+
 
 template<>
 void BVH<TopBVHNode>::set_centers(uint N)
@@ -79,6 +84,25 @@ int BVH<T>::count_nodes(BVHNode* node) const {
 	for (int i = 0; i < 2; i++)
 		count += count_nodes(&pool[node->leftFirst + i]) + 1;
 	return count;
+}
+
+template<typename T>
+int BVH<T>::max_parent(BVHNode* node) const {
+	if (node->count != 0) return node->parent;
+	int maximum = max(max_parent(&pool[node->leftFirst]), max_parent(&pool[node->leftFirst + 1]));
+	return maximum;
+}
+template<typename T>
+int BVH<T>::max_leftFirst(BVHNode* node) const {
+	if (node->count != 0) return node->leftFirst;
+	int maximum = max(max_leftFirst(&pool[node->leftFirst]), max_leftFirst(&pool[node->leftFirst + 1]));
+	return maximum;
+}
+template<typename T>
+int BVH<T>::max_count(BVHNode* node) const {
+	if (node->count != 0) return node->count;
+	int maximum = max(max_count(&pool[node->leftFirst]), max_count(&pool[node->leftFirst + 1]));
+	return maximum;
 }
 
 template<typename T>
@@ -261,4 +285,19 @@ AABB BVH<TopBVHNode>::CalculateBounds(uint first, uint amount) const
 
 	return AABB(minx - bb_epsilon, miny - bb_epsilon, minz - bb_epsilon, maxx + bb_epsilon, maxy + bb_epsilon, maxz + bb_epsilon);
 }
-
+template<>
+std::unique_ptr<BVHNodeCompressed[]> BVH<TopBVHNode>::get_compressed() const {
+	std::unique_ptr<BVHNodeCompressed[]> compressed_pool = std::make_unique<BVHNodeCompressed[]>(elements_of_pool_used + 2);
+	for (int i = 0; i < elements_of_pool_used + 2; i++) {
+		compressed_pool[i] = pool[i].compress();
+	}
+	return compressed_pool;
+}
+template<>
+std::unique_ptr<BVHNodeCompressed[]> BVH<Triangle>::get_compressed() const {
+	std::unique_ptr<BVHNodeCompressed[]> compressed_pool = std::make_unique<BVHNodeCompressed[]>(elements_of_pool_used+2);
+	for (int i = 0; i < elements_of_pool_used + 2; i++) {
+		compressed_pool[i] = pool[i].compress();
+	}
+	return compressed_pool;
+}

@@ -4,6 +4,14 @@
 #include "Materials.h"
 #include "Utils.h"
 
+struct TriangleCompressed {
+	float3 p0;
+	float3 p1;
+	float3 p2;
+	float4 normal; // last element is material
+};
+
+
 class Triangle
 {
 public:
@@ -15,6 +23,7 @@ public:
 	Triangle(float3 p0, float3 p1, float3 p2, float3 normal, Material material);
 	float3 get_normal() const;
 	float3 get_center() const;
+	TriangleCompressed compress();
 };
 
 

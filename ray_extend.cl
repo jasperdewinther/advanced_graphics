@@ -78,9 +78,9 @@ __kernel void extend(__global struct Ray *ray_data,
             // the furthest already hit object
 
   for (int step = 0; step < 10000; step++) {
-    if (current->count) { // if in leaf
-      for (int i = current->leftFirst; i < current->leftFirst + current->count;
-           i++) {
+    if (current->count & 0xF) { // if in leaf
+      for (int i = current->leftFirst;
+           i < current->leftFirst + (current->count & 0xF); i++) {
         __constant struct TopBVHNode *node = &m_top_leaves[m_top_indices[i]];
         r->o -= node->pos;
 
@@ -96,9 +96,9 @@ __kernel void extend(__global struct Ray *ray_data,
         for (int bstep = 0; bstep < 10000; bstep++) {
           if (kill == true)
             break;
-          if (bcurrent->count) { // if in leaf
+          if (bcurrent->count & 0xF) { // if in leaf
             for (int bi = bcurrent->leftFirst;
-                 bi < bcurrent->leftFirst + bcurrent->count; bi++) {
+                 bi < bcurrent->leftFirst + (bcurrent->count & 0xF); bi++) {
               uint bprim_start = m_model_primitives_starts[bobj_index];
               uint btriangle_index = bprim_start + m_indices[bprim_start + bi];
               struct Triangle bt = m_triangles[btriangle_index];
@@ -109,9 +109,9 @@ __kernel void extend(__global struct Ray *ray_data,
               intersect_triangle(&bt, r, btriangle_index);
             }
             blast = bcurrent;
-            if (bcurrent->parent == -1)
+            if ((bcurrent->count >> 8) == -1)
               kill = true;
-            bcurrent = &m_bvh_nodes[bmodel_start + bcurrent->parent];
+            bcurrent = &m_bvh_nodes[bmodel_start + (bcurrent->count >> 8)];
             continue;
           }
 
@@ -139,20 +139,20 @@ __kernel void extend(__global struct Ray *ray_data,
 
           if (blast == bfar_node) { // just went up
             blast = bcurrent;
-            if (bcurrent->parent == -1)
+            if ((bcurrent->count >> 8) == -1)
               kill = true;
-            bcurrent = &m_bvh_nodes[bmodel_start + bcurrent->parent];
+            bcurrent = &m_bvh_nodes[bmodel_start + (bcurrent->count >> 8)];
             continue;
           }
 
-          // either last node is near or parent
+          // either last node is near or count
 
           __constant struct BVHNode *btry_child;
-          if (bcurrent->parent == -1) {
+          if ((bcurrent->count >> 8) == -1) {
             btry_child = (blast != bnear_node) ? bnear_node : bfar_node;
           } else {
             btry_child =
-                (blast == &m_bvh_nodes[bmodel_start + bcurrent->parent])
+                (blast == &m_bvh_nodes[bmodel_start + (bcurrent->count >> 8)])
                     ? bnear_node
                     : bfar_node;
           }
@@ -168,18 +168,18 @@ __kernel void extend(__global struct Ray *ray_data,
               blast = bnear_node;
             } else { // move up
               blast = bcurrent;
-              if (bcurrent->parent == -1)
+              if ((bcurrent->count >> 8) == -1)
                 kill = true;
-              bcurrent = &m_bvh_nodes[bmodel_start + bcurrent->parent];
+              bcurrent = &m_bvh_nodes[bmodel_start + (bcurrent->count >> 8)];
             }
           }
         }
         r->o += node->pos;
       }
       last = current;
-      if (current->parent == -1)
+      if ((current->count >> 8) == -1)
         return;
-      current = &m_top_bvh_nodes[current->parent];
+      current = &m_top_bvh_nodes[(current->count >> 8)];
       continue;
     }
 
@@ -200,20 +200,20 @@ __kernel void extend(__global struct Ray *ray_data,
 
     if (last == far_node) { // just went up
       last = current;
-      if (current->parent == -1)
+      if ((current->count >> 8) == -1)
         return;
-      current = &m_top_bvh_nodes[current->parent];
+      current = &m_top_bvh_nodes[(current->count >> 8)];
       continue;
     }
 
-    // either last node is near or parent
+    // either last node is near or count
 
     __constant struct BVHNode *try_child;
-    if (current->parent == -1) {
+    if ((current->count >> 8) == -1) {
       try_child = (last != near_node) ? near_node : far_node;
     } else {
-      try_child =
-          (last == &m_top_bvh_nodes[current->parent]) ? near_node : far_node;
+      try_child = (last == &m_top_bvh_nodes[(current->count >> 8)]) ? near_node
+                                                                    : far_node;
     }
 
     intersection_test_result = intersects_aabb_glob(try_child, r);
@@ -226,9 +226,9 @@ __kernel void extend(__global struct Ray *ray_data,
         last = near_node;
       } else { // move up
         last = current;
-        if (current->parent == -1)
+        if ((current->count >> 8) == -1)
           return;
-        current = &m_top_bvh_nodes[current->parent];
+        current = &m_top_bvh_nodes[(current->count >> 8)];
       }
     }
   }

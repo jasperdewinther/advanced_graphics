@@ -23,6 +23,16 @@ float3 Triangle::get_center() const
     return float3((p0.x+p1.x+p2.x)/3.0, (p0.y + p1.y + p2.y) / 3.0, (p0.z + p1.z + p2.z) / 3.0);
 }
 
+TriangleCompressed Triangle::compress()
+{
+    return TriangleCompressed{
+        p0,
+        p1,
+        p2,
+        float4{normal.x, normal.y, normal.z, (float)m}
+    };
+}
+
 
 std::vector<Triangle> get_mesh_from_file(const std::string& filename, float scalefactor, Material material){
     //assumes normals of all vertices belonging to one triangle are the same 
